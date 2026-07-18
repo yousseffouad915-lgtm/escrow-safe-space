@@ -169,17 +169,15 @@ export const listMyProposals = createServerFn({ method: "GET" })
   });
 
 // -------- Contracts / Escrow (thin wrappers around RPCs) --------
-async function callRpc(
-  ctx: { supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> } },
-  fn: string,
-  args: Record<string, unknown>,
-): Promise<Record<string, unknown> | null> {
-  const { data, error } = await ctx.supabase.rpc(fn, args);
+type Ctx = { supabase: { rpc: (fn: never, args: never) => Promise<{ data: unknown; error: { message: string } | null }> } };
+async function callRpc(ctx: Ctx, fn: string, args: Record<string, unknown>): Promise<{ ok: true; data: unknown }> {
+  const { data, error } = await ctx.supabase.rpc(fn as never, args as never);
   if (error) {
     const msg = error.message.replace(/^.*ERROR:\s*/i, "").trim();
     throw new Error(msg || "unknown");
   }
-  return (data as Record<string, unknown> | null) ?? null;
+  // JSON round-trip to guarantee serializable output
+  return { ok: true, data: JSON.parse(JSON.stringify(data ?? null)) };
 }
 
 export const acceptProposal = createServerFn({ method: "POST" })
