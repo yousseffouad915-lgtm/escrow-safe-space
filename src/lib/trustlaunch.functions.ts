@@ -169,15 +169,18 @@ export const listMyProposals = createServerFn({ method: "GET" })
   });
 
 // -------- Contracts / Escrow (thin wrappers around RPCs) --------
-type Ctx = { supabase: { rpc: (fn: never, args: never) => Promise<{ data: unknown; error: { message: string } | null }> } };
-async function callRpc(ctx: Ctx, fn: string, args: Record<string, unknown>): Promise<{ ok: true; data: unknown }> {
-  const { data, error } = await ctx.supabase.rpc(fn as never, args as never);
-  if (error) {
-    const msg = error.message.replace(/^.*ERROR:\s*/i, "").trim();
+// Return only { ok: true } — clients refetch contracts/wallets/notifications after mutation.
+async function callRpc(
+  ctx: { supabase: { rpc: (fn: never, args: never) => { then: (...a: never[]) => unknown } } },
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<{ ok: true }> {
+  const res = (await (ctx.supabase.rpc as unknown as (f: string, a: unknown) => Promise<{ error: { message: string } | null }>)(fn, args));
+  if (res.error) {
+    const msg = res.error.message.replace(/^.*ERROR:\s*/i, "").trim();
     throw new Error(msg || "unknown");
   }
-  // JSON round-trip to guarantee serializable output
-  return { ok: true, data: JSON.parse(JSON.stringify(data ?? null)) };
+  return { ok: true };
 }
 
 export const acceptProposal = createServerFn({ method: "POST" })
