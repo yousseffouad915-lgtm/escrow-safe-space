@@ -1,0 +1,71 @@
+{
+  "app": {
+    "name": "TrustLaunch",
+    "tagline": "Secure freelance marketplace with escrow protection"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "wallet": "Wallet",
+    "kyc": "Identity",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signUp": "Sign up",
+    "language": "Language"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "google": "Continue with Google",
+    "or": "or",
+    "haveAccount": "Already have an account?",
+    "noAccount": "Don't have an account?",
+    "invalid": "Invalid email or password"
+  },
+  "kyc": {
+    "title": "Identity verification",
+    "subtitle": "Upload your ID and a selfie. Status auto-set to Pending.",
+    "idDoc": "Government ID",
+    "selfie": "Selfie holding ID",
+    "submit": "Submit for review",
+    "statusPending": "Pending review",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "required": "KYC approval required before this action"
+  },
+  "escrow": {
+    "fundsSecured": "Funds Secured",
+    "fundContract": "Fund escrow",
+    "submitWork": "Submit work",
+    "approveWork": "Approve & release",
+    "dispute": "Dispute / Refund",
+    "revision": "Request revision",
+    "autoReleaseIn": "Auto-releases in {{days}} days",
+    "fee": "5% platform fee applies on release"
+  },
+  "status": {
+    "pending_funding": "Awaiting funding",
+    "funded_locked": "Funds locked",
+    "work_submitted": "Work submitted",
+    "approved_released": "Released",
+    "disputed": "Disputed",
+    "refunded": "Refunded",
+    "cancelled": "Cancelled"
+  },
+  "errors": {
+    "KYC_REQUIRED": "Identity verification must be approved before this action",
+    "INSUFFICIENT_FUNDS": "Insufficient wallet balance",
+    "FORBIDDEN": "You don't have permission for this action",
+    "INVALID_STATE": "This action isn't allowed in the current state",
+    "CONTRACT_NOT_FOUND": "Contract not found",
+    "PROPOSAL_NOT_FOUND": "Proposal not found",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "support": {
+    "title": "TrustLaunch Support",
+    "placeholder": "Ask anything about escrow, KYC, or your project…",
+    "escalation": "This looks serious. Please email our support team:"
+  }
+}
