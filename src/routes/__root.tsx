@@ -81,14 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "TrustLaunch — Secure freelance marketplace with escrow" },
+      { name: "description", content: "Post projects, hire freelancers, and pay safely with escrow-locked funds, KYC identity verification, and dispute protection." },
+      { name: "author", content: "TrustLaunch" },
+      { property: "og:title", content: "TrustLaunch" },
+      { property: "og:description", content: "Escrow-secured freelance work with mandatory KYC and dispute protection." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
