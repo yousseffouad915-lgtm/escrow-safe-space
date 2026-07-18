@@ -169,18 +169,17 @@ export const listMyProposals = createServerFn({ method: "GET" })
   });
 
 // -------- Contracts / Escrow (thin wrappers around RPCs) --------
-async function callRpc<T = unknown>(
-  ctx: { supabase: import("@supabase/supabase-js").SupabaseClient },
+async function callRpc(
+  ctx: { supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> } },
   fn: string,
   args: Record<string, unknown>,
-): Promise<T> {
+): Promise<Record<string, unknown> | null> {
   const { data, error } = await ctx.supabase.rpc(fn, args);
   if (error) {
-    // strip pg noise; expose stable code
     const msg = error.message.replace(/^.*ERROR:\s*/i, "").trim();
     throw new Error(msg || "unknown");
   }
-  return data as T;
+  return (data as Record<string, unknown> | null) ?? null;
 }
 
 export const acceptProposal = createServerFn({ method: "POST" })
