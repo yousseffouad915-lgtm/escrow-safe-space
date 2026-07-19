@@ -7,9 +7,9 @@ import { useLanguage } from "@/i18n/LanguageProvider";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TrustLaunch — Secure freelance marketplace with escrow" },
+      { title: "TrustLance — Secure freelance marketplace with escrow" },
       { name: "description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients." },
-      { property: "og:title", content: "TrustLaunch — Escrow-secured freelance work" },
+      { property: "og:title", content: "TrustLance — Escrow-secured freelance work" },
       { property: "og:description", content: "Post projects, submit proposals, and get paid safely. Funds locked in escrow until you approve." },
     ],
   }),

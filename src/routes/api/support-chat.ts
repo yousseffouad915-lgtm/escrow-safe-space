@@ -6,10 +6,10 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 const ESCALATION_RE =
   /\b(scam|fraud|legit|legitimacy|stolen|steal|cheat|rip[\s-]?off|fake)\b|نصب|احتيال|موثوق|مشبوه|سرقة/i;
 
-const SYSTEM_PROMPT = `You are TrustLaunch Support, a concise assistant for a freelance marketplace with escrow protection.
+const SYSTEM_PROMPT = `You are TrustLance Support, a concise assistant for a freelance marketplace with escrow protection.
 Answer briefly (2-4 sentences). Cover: how escrow works (funds locked until client approval, 3-day auto-release, 5% platform fee), KYC identity verification (ID + selfie, admin review), dispute resolution, and how to use the client/freelancer dashboards.
 NEVER mention any support email address, even if asked. Never say "contact support at X". If a user is worried about scams or legitimacy, respond calmly and reassure them — the app itself will surface the support escalation card.
-Keep responses friendly and professional. If asked something outside TrustLaunch, politely redirect.`;
+Keep responses friendly and professional. If asked something outside TrustLance, politely redirect.`;
 
 export const Route = createFileRoute("/api/support-chat")({
   server: {
