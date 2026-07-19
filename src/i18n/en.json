@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "TrustLaunch",
+    "name": "TrustLance",
     "tagline": "Secure freelance marketplace with escrow protection"
   },
   "nav": {
@@ -24,6 +24,23 @@
     "noAccount": "Don't have an account?",
     "invalid": "Invalid email or password"
   },
+  "onboarding": {
+    "welcome": "Welcome to TrustLance",
+    "stepRole": "Choose your role",
+    "stepKyc": "Verify your identity",
+    "stepDone": "You're all set",
+    "roleDesc": "You can pick one or both. You can act as a client (post projects) and as a freelancer (submit proposals).",
+    "client": "Client",
+    "freelancer": "Freelancer",
+    "clientDesc": "Post projects and hire verified freelancers.",
+    "freelancerDesc": "Browse projects and get paid safely via escrow.",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Go to dashboard",
+    "skipKyc": "Skip for now",
+    "kycNote": "KYC approval is required before funding or submitting proposals. You can complete it later from the dashboard.",
+    "step": "Step {{n}} of {{total}}"
+  },
   "kyc": {
     "title": "Identity verification",
     "subtitle": "Upload your ID and a selfie. Status auto-set to Pending.",
@@ -33,7 +50,50 @@
     "statusPending": "Pending review",
     "statusApproved": "Approved",
     "statusRejected": "Rejected",
-    "required": "KYC approval required before this action"
+    "required": "KYC approval required before this action",
+    "uploading": "Uploading…",
+    "reupload": "Re-submit KYC"
+  },
+  "dashboard": {
+    "clientTab": "Client",
+    "freelancerTab": "Freelancer",
+    "wallet": "Wallet",
+    "available": "Available",
+    "locked": "In escrow",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications yet.",
+    "createProject": "Post a project",
+    "projectTitle": "Title",
+    "projectDescription": "Description",
+    "budget": "Budget (USD)",
+    "deadline": "Deadline (optional)",
+    "post": "Post project",
+    "myProjects": "My projects",
+    "noProjects": "No projects yet.",
+    "browseProjects": "Open projects",
+    "noOpenProjects": "No open projects right now.",
+    "myProposals": "My proposals",
+    "noProposals": "You haven't submitted any proposals yet.",
+    "myContracts": "My contracts",
+    "noContracts": "No contracts yet.",
+    "bid": "Your bid (USD)",
+    "coverLetter": "Cover letter",
+    "days": "Estimated days",
+    "submitProposal": "Submit proposal",
+    "viewProposals": "View proposals",
+    "accept": "Accept",
+    "fund": "Fund escrow",
+    "submit": "Submit work",
+    "approve": "Approve & release",
+    "dispute": "Open dispute",
+    "revision": "Request revision",
+    "reason": "Reason",
+    "note": "Note",
+    "amount": "Amount",
+    "youEarn": "You receive (95%)",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as",
+    "welcomeBack": "Welcome back"
   },
   "escrow": {
     "fundsSecured": "Funds Secured",
@@ -52,7 +112,11 @@
     "approved_released": "Released",
     "disputed": "Disputed",
     "refunded": "Refunded",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "open": "Open",
+    "awarded": "Awarded",
+    "in_progress": "In progress",
+    "completed": "Completed"
   },
   "errors": {
     "KYC_REQUIRED": "Identity verification must be approved before this action",
@@ -64,7 +128,7 @@
     "unknown": "Something went wrong. Please try again."
   },
   "support": {
-    "title": "TrustLaunch Support",
+    "title": "TrustLance Support",
     "placeholder": "Ask anything about escrow, KYC, or your project…",
     "escalation": "This looks serious. Please email our support team:"
   }
