@@ -1,0 +1,1 @@
+INSERT INTO public.admin_config (id, super_admin_id) VALUES (1, '89fd5422-d72a-4e91-a7d5-e22f5574654d') ON CONFLICT (id) DO UPDATE SET super_admin_id = EXCLUDED.super_admin_id;
