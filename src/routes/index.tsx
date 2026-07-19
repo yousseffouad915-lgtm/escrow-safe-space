@@ -8,9 +8,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "TrustLance — Secure freelance marketplace with escrow" },
-      { name: "description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients." },
-      { property: "og:title", content: "TrustLance — Escrow-secured freelance work" },
-      { property: "og:description", content: "Post projects, submit proposals, and get paid safely. Funds locked in escrow until you approve." },
+      { name: "description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients.\nموقع بيربط بين العميل و منفذ الخدمه باقصي درجات الامان" },
+      { property: "og:title", content: "TrustLance — Secure freelance marketplace with escrow" },
+      { property: "og:description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients.\nموقع بيربط بين العميل و منفذ الخدمه باقصي درجات الامان" },
     ],
   }),
   component: Landing,
