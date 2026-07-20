@@ -681,6 +681,7 @@ export type Database = {
         | "dispute_opened"
         | "dispute_resolved"
         | "kyc_status_changed"
+        | "new_review"
       project_status: "open" | "awarded" | "closed" | "cancelled"
       proposal_status: "submitted" | "accepted" | "rejected" | "withdrawn"
     }
@@ -838,6 +839,7 @@ export const Constants = {
         "dispute_opened",
         "dispute_resolved",
         "kyc_status_changed",
+        "new_review",
       ],
       project_status: ["open", "awarded", "closed", "cancelled"],
       proposal_status: ["submitted", "accepted", "rejected", "withdrawn"],
