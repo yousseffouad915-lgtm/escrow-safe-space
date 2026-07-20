@@ -13,7 +13,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
+import { Route as AuthenticatedFreelancerDashboardRouteImport } from './routes/_authenticated/freelancer-dashboard'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/client-dashboard'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,22 +37,45 @@ const ApiSupportChatRoute = ApiSupportChatRouteImport.update({
   path: '/api/support-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedFreelancerDashboardRoute =
+  AuthenticatedFreelancerDashboardRouteImport.update({
+    id: '/freelancer-dashboard',
+    path: '/freelancer-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientDashboardRoute =
+  AuthenticatedClientDashboardRouteImport.update({
+    id: '/client-dashboard',
+    path: '/client-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesById {
@@ -57,20 +83,40 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/api/support-chat'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/client-dashboard'
+    | '/dashboard'
+    | '/freelancer-dashboard'
+    | '/api/support-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/api/support-chat'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/client-dashboard'
+    | '/dashboard'
+    | '/freelancer-dashboard'
+    | '/api/support-chat'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin'
+    | '/_authenticated/client-dashboard'
     | '/_authenticated/dashboard'
+    | '/_authenticated/freelancer-dashboard'
     | '/api/support-chat'
   fileRoutesById: FileRoutesById
 }
@@ -111,6 +157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSupportChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/freelancer-dashboard': {
+      id: '/_authenticated/freelancer-dashboard'
+      path: '/freelancer-dashboard'
+      fullPath: '/freelancer-dashboard'
+      preLoaderRoute: typeof AuthenticatedFreelancerDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -118,15 +171,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/client-dashboard': {
+      id: '/_authenticated/client-dashboard'
+      path: '/client-dashboard'
+      fullPath: '/client-dashboard'
+      preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFreelancerDashboardRoute: typeof AuthenticatedFreelancerDashboardRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFreelancerDashboardRoute: AuthenticatedFreelancerDashboardRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -141,13 +214,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -1,16 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, MessageCircle, Globe } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "TrustLance — Secure freelance marketplace with escrow" },
-      { name: "description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients.\nموقع بيربط بين العميل و منفذ الخدمه باقصي درجات الامان" },
+      { name: "description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients." },
       { property: "og:title", content: "TrustLance — Secure freelance marketplace with escrow" },
-      { property: "og:description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients.\nموقع بيربط بين العميل و منفذ الخدمه باقصي درجات الامان" },
+      { property: "og:description", content: "Escrow-backed contracts, KYC identity verification, and dispute protection for freelancers and clients." },
     ],
   }),
   component: Landing,
@@ -19,6 +22,18 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
+  const navigate = useNavigate();
+
+  // If OAuth or existing session lands here on the production URL, forward to the dispatcher.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/dashboard", replace: true });
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) navigate({ to: "/dashboard", replace: true });
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

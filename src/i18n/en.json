@@ -127,6 +127,23 @@
     "PROPOSAL_NOT_FOUND": "Proposal not found",
     "unknown": "Something went wrong. Please try again."
   },
+  "reviews": {
+    "leave": "Leave a review",
+    "submit": "Submit review",
+    "submitted": "Review submitted",
+    "rating": "Rating",
+    "comment": "Comment (optional)",
+    "rateThe": "Rate the {{role}}",
+    "noneToLeave": "No completed contracts to review yet.",
+    "myRatings": "My ratings",
+    "noneYet": "No reviews yet."
+  },
+  "admin": {
+    "pendingKyc": "Pending KYC submissions",
+    "emptyKyc": "No KYC submissions waiting.",
+    "disputes": "Open disputes",
+    "emptyDisputes": "No open disputes."
+  },
   "support": {
     "title": "TrustLance Support",
     "placeholder": "Ask anything about escrow, KYC, or your project…",

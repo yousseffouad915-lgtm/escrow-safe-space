@@ -325,3 +325,119 @@ export const setMyRoles = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// -------- Reviews --------
+export const submitReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        contractId: z.string().uuid(),
+        revieweeId: z.string().uuid(),
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().max(1000).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("reviews")
+      .insert({
+        contract_id: data.contractId,
+        reviewer_id: context.userId,
+        reviewee_id: data.revieweeId,
+        rating: data.rating,
+        comment: data.comment ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await context.supabase.from("notifications").insert({
+      user_id: data.revieweeId,
+      type: "new_review",
+      title: "You received a new review",
+      body: `${data.rating}★ · ${data.comment ?? ""}`,
+      related_id: data.contractId,
+    });
+    return row;
+  });
+
+export const listReviewsForUser = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("reviews")
+      .select("id, contract_id, reviewer_id, rating, comment, created_at")
+      .eq("reviewee_id", data.userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const listMyReviews = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("reviews")
+      .select("id, contract_id, reviewer_id, reviewee_id, rating, comment, created_at")
+      .or(`reviewer_id.eq.${context.userId},reviewee_id.eq.${context.userId}`)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const listMyReviewableContracts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const uid = context.userId;
+    const { data: contracts, error } = await context.supabase
+      .from("contracts")
+      .select("id, client_id, freelancer_id, amount_cents, status, resolved_at")
+      .in("status", ["approved_released", "refunded"])
+      .or(`client_id.eq.${uid},freelancer_id.eq.${uid}`);
+    if (error) throw new Error(error.message);
+    const ids = (contracts ?? []).map((c) => c.id);
+    if (ids.length === 0) return [];
+    const { data: existing } = await context.supabase
+      .from("reviews")
+      .select("contract_id")
+      .eq("reviewer_id", uid)
+      .in("contract_id", ids);
+    const done = new Set((existing ?? []).map((r) => r.contract_id));
+    return (contracts ?? [])
+      .filter((c) => !done.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        amount_cents: c.amount_cents,
+        counterpartyId: c.client_id === uid ? c.freelancer_id : c.client_id,
+        counterpartyRole: c.client_id === uid ? "freelancer" : "client",
+      }));
+  });
+
+// -------- Admin queues --------
+export const adminListPendingKyc = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("kyc_submissions")
+      .select("*")
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const adminListDisputedContracts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("contracts")
+      .select("*")
+      .eq("status", "disputed")
+      .order("disputed_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
