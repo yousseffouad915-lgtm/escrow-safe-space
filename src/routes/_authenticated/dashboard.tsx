@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Globe, Lock, LogOut, Shield, Bell, Wallet as WalletIcon } from "lucide-react";
+import { Globe, Lock, LogOut, Shield, Bell, Wallet as WalletIcon, Star } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/i18n/LanguageProvider";
@@ -17,6 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import {
   getMyRoles,
@@ -39,101 +47,236 @@ import {
   approveWork,
   openDispute,
   requestRevision,
+  submitReview,
+  listMyReviewableContracts,
+  listReviewsForUser,
+  adminListPendingKyc,
+  adminListDisputedContracts,
+  adminReviewKyc,
+  adminResolveDispute,
 } from "@/lib/trustlaunch.functions";
 
+// -------- Role-based dispatcher route --------
 export const Route = createFileRoute("/_authenticated/dashboard")({
   ssr: false,
-  component: DashboardPage,
+  component: DashboardDispatcher,
 });
+
+function DashboardDispatcher() {
+  const navigate = useNavigate();
+  const rolesFn = useServerFn(getMyRoles);
+  const rolesQ = useQuery({ queryKey: ["roles"], queryFn: () => rolesFn() });
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!rolesQ.isSuccess) return;
+    const roles = (rolesQ.data ?? []) as string[];
+    if (roles.includes("admin")) {
+      navigate({ to: "/admin", replace: true });
+      return;
+    }
+    const app = roles.filter((r) => r === "client" || r === "freelancer");
+    if (app.length === 0) return; // show onboarding below
+    if (app.includes("client")) navigate({ to: "/client-dashboard", replace: true });
+    else navigate({ to: "/freelancer-dashboard", replace: true });
+  }, [rolesQ.isSuccess, rolesQ.data, navigate]);
+
+  if (rolesQ.isLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
+  }
+  const appRoles = ((rolesQ.data ?? []) as string[]).filter((r) => r === "client" || r === "freelancer");
+  if (appRoles.length === 0) {
+    return <OnboardingWizard onDone={() => qc.invalidateQueries()} />;
+  }
+  return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
+}
 
 const fmt = (cents: number | null | undefined) =>
   `$${((cents ?? 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function DashboardPage() {
+// -------- Shared shell rendered by role-specific routes --------
+export type ShellView = "client" | "freelancer" | "admin";
+
+export function DashboardShell({ view }: { view: ShellView }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { lang, setLang } = useLanguage();
   const qc = useQueryClient();
 
   const rolesFn = useServerFn(getMyRoles);
   const kycFn = useServerFn(getMyKyc);
   const walletFn = useServerFn(getMyWallet);
-  const notifFn = useServerFn(listMyNotifications);
 
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: () => rolesFn() });
   const kycQ = useQuery({ queryKey: ["kyc"], queryFn: () => kycFn() });
   const walletQ = useQuery({ queryKey: ["wallet"], queryFn: () => walletFn() });
-  const notifQ = useQuery({ queryKey: ["notifications"], queryFn: () => notifFn(), refetchInterval: 15_000 });
 
   const roles = (rolesQ.data ?? []) as string[];
-  const appRoles = roles.filter((r) => r === "client" || r === "freelancer");
   const isAdmin = roles.includes("admin");
-  const needsOnboarding = rolesQ.isSuccess && appRoles.length === 0;
+  const hasClient = roles.includes("client");
+  const hasFreelancer = roles.includes("freelancer");
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/" });
-  }
-
-  if (rolesQ.isLoading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
-  }
-
-  if (needsOnboarding) {
-    return <OnboardingWizard onDone={() => qc.invalidateQueries()} />;
-  }
-
-  const hasClient = appRoles.includes("client");
-  const hasFreelancer = appRoles.includes("freelancer");
-  const defaultTab = hasClient ? "client" : "freelancer";
+  // Guard: if a user hits a role URL they don't have, bounce to dispatcher.
+  useEffect(() => {
+    if (!rolesQ.isSuccess) return;
+    if (view === "admin" && !isAdmin) navigate({ to: "/dashboard", replace: true });
+    if (view === "client" && !hasClient && !isAdmin) navigate({ to: "/dashboard", replace: true });
+    if (view === "freelancer" && !hasFreelancer && !isAdmin) navigate({ to: "/dashboard", replace: true });
+  }, [rolesQ.isSuccess, view, isAdmin, hasClient, hasFreelancer, navigate]);
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="font-semibold">{t("app.name")}</span>
-            {isAdmin && <Badge variant="destructive" className="ms-2">admin</Badge>}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
-              <Globe className="me-1 h-4 w-4" />
-              {lang === "ar" ? "EN" : "عربي"}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="me-1 h-4 w-4" />
-              {t("dashboard.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
-
+      <DashboardHeader isAdmin={isAdmin} view={view} hasClient={hasClient} hasFreelancer={hasFreelancer} />
       <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <WalletCard wallet={walletQ.data} />
-          <KycCard kyc={kycQ.data} onSubmitted={() => qc.invalidateQueries({ queryKey: ["kyc"] })} />
-          <NotificationsCard notifications={notifQ.data ?? []} onRead={() => qc.invalidateQueries({ queryKey: ["notifications"] })} />
-        </div>
+        {view !== "admin" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <WalletCard wallet={walletQ.data} />
+            <KycCard kyc={kycQ.data} onSubmitted={() => qc.invalidateQueries({ queryKey: ["kyc"] })} />
+          </div>
+        )}
 
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList>
-            {hasClient && <TabsTrigger value="client">{t("dashboard.clientTab")}</TabsTrigger>}
-            {hasFreelancer && <TabsTrigger value="freelancer">{t("dashboard.freelancerTab")}</TabsTrigger>}
-          </TabsList>
-          {hasClient && (
-            <TabsContent value="client" className="mt-4">
-              <ClientDashboard kycApproved={kycQ.data?.status === "approved"} />
-            </TabsContent>
-          )}
-          {hasFreelancer && (
-            <TabsContent value="freelancer" className="mt-4">
-              <FreelancerDashboard kycApproved={kycQ.data?.status === "approved"} />
-            </TabsContent>
-          )}
-        </Tabs>
+        {view === "client" && <ClientDashboard kycApproved={kycQ.data?.status === "approved"} />}
+        {view === "freelancer" && <FreelancerDashboard kycApproved={kycQ.data?.status === "approved"} />}
+        {view === "admin" && <AdminPanel />}
+
+        {view !== "admin" && <ReviewsSection />}
       </main>
     </div>
+  );
+}
+
+function DashboardHeader({
+  isAdmin, view, hasClient, hasFreelancer,
+}: { isAdmin: boolean; view: ShellView; hasClient: boolean; hasFreelancer: boolean }) {
+  const { t } = useTranslation();
+  const { lang, setLang } = useLanguage();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  async function signOut() {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
+
+  const linkCls = (active: boolean) =>
+    `rounded-md px-3 py-1.5 text-sm ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`;
+
+  return (
+    <header className="border-b bg-card">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-semibold">{t("app.name")}</span>
+          {isAdmin && <Badge variant="destructive" className="ms-2">admin</Badge>}
+        </div>
+        <nav className="hidden items-center gap-1 md:flex">
+          {hasClient && (
+            <Link to="/client-dashboard" className={linkCls(view === "client")}>{t("dashboard.clientTab")}</Link>
+          )}
+          {hasFreelancer && (
+            <Link to="/freelancer-dashboard" className={linkCls(view === "freelancer")}>{t("dashboard.freelancerTab")}</Link>
+          )}
+          {isAdmin && (
+            <Link to="/admin" className={linkCls(view === "admin")}>Admin</Link>
+          )}
+        </nav>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <Button variant="ghost" size="sm" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
+            <Globe className="me-1 h-4 w-4" />
+            {lang === "ar" ? "EN" : "عربي"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={signOut}>
+            <LogOut className="me-1 h-4 w-4" />
+            {t("dashboard.signOut")}
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// -------- Realtime notification bell --------
+function NotificationBell() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const notifFn = useServerFn(listMyNotifications);
+  const markFn = useServerFn(markNotificationRead);
+  const notifQ = useQuery({ queryKey: ["notifications"], queryFn: () => notifFn(), refetchInterval: 30_000 });
+  const list = (notifQ.data ?? []) as Notif[];
+  const unread = list.filter((n) => !n.read_at).length;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid || cancelled) return;
+      const channel = supabase
+        .channel(`notif-${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+          (payload) => {
+            const n = payload.new as { title?: string };
+            if (n?.title) toast.message(n.title);
+            qc.invalidateQueries({ queryKey: ["notifications"] });
+            qc.invalidateQueries({ queryKey: ["contracts"] });
+            qc.invalidateQueries({ queryKey: ["wallet"] });
+          },
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [qc]);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className="absolute -end-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+              {unread}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>{t("dashboard.notifications")}</span>
+          {unread > 0 && <Badge>{unread}</Badge>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {list.length === 0 && (
+          <div className="p-3 text-xs text-muted-foreground">{t("dashboard.noNotifications")}</div>
+        )}
+        <div className="max-h-80 overflow-auto">
+          {list.slice(0, 20).map((n) => (
+            <DropdownMenuItem
+              key={n.id}
+              className={`flex flex-col items-start gap-1 ${n.read_at ? "opacity-60" : ""}`}
+              onClick={async () => {
+                if (!n.read_at) {
+                  await markFn({ data: { id: n.id } });
+                  qc.invalidateQueries({ queryKey: ["notifications"] });
+                }
+              }}
+            >
+              <div className="text-sm font-medium">{n.title}</div>
+              {n.body && <div className="text-xs text-muted-foreground">{n.body}</div>}
+              <div className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</div>
+            </DropdownMenuItem>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
