@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
+import { Route as AuthenticatedFreelancerDashboardRouteImport } from './routes/_authenticated/freelancer-dashboard'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/client-dashboard'
 
@@ -35,6 +36,12 @@ const ApiSupportChatRoute = ApiSupportChatRouteImport.update({
   path: '/api/support-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedFreelancerDashboardRoute =
+  AuthenticatedFreelancerDashboardRouteImport.update({
+    id: '/freelancer-dashboard',
+    path: '/freelancer-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesById {
@@ -68,6 +77,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRouteTypes {
@@ -77,9 +87,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/client-dashboard'
     | '/dashboard'
+    | '/freelancer-dashboard'
     | '/api/support-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/client-dashboard' | '/dashboard' | '/api/support-chat'
+  to:
+    | '/'
+    | '/auth'
+    | '/client-dashboard'
+    | '/dashboard'
+    | '/freelancer-dashboard'
+    | '/api/support-chat'
   id:
     | '__root__'
     | '/'
@@ -87,6 +104,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/client-dashboard'
     | '/_authenticated/dashboard'
+    | '/_authenticated/freelancer-dashboard'
     | '/api/support-chat'
   fileRoutesById: FileRoutesById
 }
@@ -127,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSupportChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/freelancer-dashboard': {
+      id: '/_authenticated/freelancer-dashboard'
+      path: '/freelancer-dashboard'
+      fullPath: '/freelancer-dashboard'
+      preLoaderRoute: typeof AuthenticatedFreelancerDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -147,11 +172,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFreelancerDashboardRoute: typeof AuthenticatedFreelancerDashboardRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFreelancerDashboardRoute: AuthenticatedFreelancerDashboardRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

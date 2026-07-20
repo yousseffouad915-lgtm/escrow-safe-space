@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   component: AuthPage,
 });
 
@@ -21,9 +22,14 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    // If already signed in (or a fresh OAuth session just landed here), go to the dispatcher.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+      if (data.session) navigate({ to: "/dashboard", replace: true });
     });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) navigate({ to: "/dashboard", replace: true });
+    });
+    return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
   async function handleEmail(e: React.FormEvent) {
@@ -35,12 +41,12 @@ function AuthPage() {
           ? await supabase.auth.signUp({
               email,
               password,
-              options: { emailRedirectTo: window.location.origin },
+              options: { emailRedirectTo: `${window.location.origin}/auth` },
             })
           : await supabase.auth.signInWithPassword({ email, password });
       if (res.error) throw res.error;
       toast.success(mode === "signup" ? "Account created" : "Signed in");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("auth.invalid"));
     } finally {
@@ -50,8 +56,9 @@ function AuthPage() {
 
   async function handleGoogle() {
     setBusy(true);
+    // redirect_uri MUST be a public same-origin URL (works on preview + production).
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/auth`,
     });
     if (result.error) {
       toast.error(result.error.message);
@@ -59,7 +66,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/dashboard", replace: true });
   }
 
   return (
