@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/client-dashboard'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,16 +40,24 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientDashboardRoute =
+  AuthenticatedClientDashboardRouteImport.update({
+    id: '/client-dashboard',
+    path: '/client-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
@@ -57,19 +66,26 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/api/support-chat'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/client-dashboard'
+    | '/dashboard'
+    | '/api/support-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/api/support-chat'
+  to: '/' | '/auth' | '/client-dashboard' | '/dashboard' | '/api/support-chat'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/client-dashboard'
     | '/_authenticated/dashboard'
     | '/api/support-chat'
   fileRoutesById: FileRoutesById
@@ -118,14 +134,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/client-dashboard': {
+      id: '/_authenticated/client-dashboard'
+      path: '/client-dashboard'
+      fullPath: '/client-dashboard'
+      preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
 }
 
