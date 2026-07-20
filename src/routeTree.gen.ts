@@ -16,6 +16,7 @@ import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
 import { Route as AuthenticatedFreelancerDashboardRouteImport } from './routes/_authenticated/freelancer-dashboard'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/client-dashboard'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -53,10 +54,16 @@ const AuthenticatedClientDashboardRoute =
     path: '/client-dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/admin'
     | '/client-dashboard'
     | '/dashboard'
     | '/freelancer-dashboard'
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/admin'
     | '/client-dashboard'
     | '/dashboard'
     | '/freelancer-dashboard'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin'
     | '/_authenticated/client-dashboard'
     | '/_authenticated/dashboard'
     | '/_authenticated/freelancer-dashboard'
@@ -166,16 +178,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFreelancerDashboardRoute: typeof AuthenticatedFreelancerDashboardRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFreelancerDashboardRoute: AuthenticatedFreelancerDashboardRoute,
