@@ -899,4 +899,202 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
 }
 
 // prevent unused import warnings in strict builds
-void useEffect; void useMemo;
+void useEffect;
+
+// ============ Reviews ============
+type ReviewableContract = { id: string; amount_cents: number; counterpartyId: string; counterpartyRole: string };
+type ReviewRow = { id: string; contract_id: string; reviewer_id: string; reviewee_id?: string; rating: number; comment: string | null; created_at: string };
+
+function Stars({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={onChange ? () => onChange(n) : undefined}
+          className={onChange ? "cursor-pointer" : "cursor-default"}
+        >
+          <Star className={`h-4 w-4 ${n <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReviewsSection() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const reviewablesFn = useServerFn(listMyReviewableContracts);
+  const myReviewsFn = useServerFn(listReviewsForUser);
+  const submitFn = useServerFn(submitReview);
+  const [uid, setUid] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+  const pendingQ = useQuery({ queryKey: ["reviewables"], queryFn: () => reviewablesFn() });
+  const myQ = useQuery({
+    queryKey: ["myReviews", uid],
+    queryFn: () => myReviewsFn({ data: { userId: uid! } }),
+    enabled: !!uid,
+  });
+  const [openFor, setOpenFor] = useState<ReviewableContract | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const mut = useMutation({
+    mutationFn: () =>
+      submitFn({
+        data: {
+          contractId: openFor!.id,
+          revieweeId: openFor!.counterpartyId,
+          rating,
+          comment: comment || undefined,
+        },
+      }),
+    onSuccess: () => {
+      toast.success(t("reviews.submitted"));
+      setOpenFor(null); setRating(5); setComment("");
+      qc.invalidateQueries({ queryKey: ["reviewables"] });
+      qc.invalidateQueries({ queryKey: ["myReviews"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const pending = (pendingQ.data ?? []) as ReviewableContract[];
+  const reviews = (myQ.data ?? []) as ReviewRow[];
+  const avg = reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : 0;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">{t("reviews.leave")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {pending.length === 0 && <p className="text-xs text-muted-foreground">{t("reviews.noneToLeave")}</p>}
+          {pending.map((c) => (
+            <div key={c.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+              <div>
+                <div className="font-medium">{fmt(c.amount_cents)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("reviews.rateThe", { role: t(`onboarding.${c.counterpartyRole}`) })}
+                </div>
+              </div>
+              <Button size="sm" onClick={() => setOpenFor(c)}>{t("reviews.leave")}</Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-sm">
+            <span>{t("reviews.myRatings")}</span>
+            {reviews.length > 0 && (
+              <span className="flex items-center gap-1 text-xs">
+                <Stars value={Math.round(avg)} /> {avg.toFixed(1)} · {reviews.length}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {reviews.length === 0 && <p className="text-xs text-muted-foreground">{t("reviews.noneYet")}</p>}
+          {reviews.slice(0, 8).map((r) => (
+            <div key={r.id} className="rounded-md border p-2 text-sm">
+              <Stars value={r.rating} />
+              {r.comment && <p className="mt-1 text-xs text-muted-foreground">{r.comment}</p>}
+              <div className="mt-1 text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!openFor} onOpenChange={(v) => !v && setOpenFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("reviews.leave")}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t("reviews.rating")}</Label>
+              <div className="mt-1"><Stars value={rating} onChange={setRating} /></div>
+            </div>
+            <div>
+              <Label>{t("reviews.comment")}</Label>
+              <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenFor(null)}>{t("onboarding.back")}</Button>
+            <Button onClick={() => mut.mutate()} disabled={mut.isPending}>{t("reviews.submit")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ============ Admin panel ============
+function AdminPanel() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const kycFn = useServerFn(adminListPendingKyc);
+  const dispFn = useServerFn(adminListDisputedContracts);
+  const reviewKyc = useServerFn(adminReviewKyc);
+  const resolveDisp = useServerFn(adminResolveDispute);
+  const kycQ = useQuery({ queryKey: ["adminKyc"], queryFn: () => kycFn() });
+  const dispQ = useQuery({ queryKey: ["adminDisputes"], queryFn: () => dispFn() });
+
+  const kycMut = useMutation({
+    mutationFn: (v: { kycId: string; approve: boolean; notes?: string }) => reviewKyc({ data: v }),
+    onSuccess: () => { toast.success("KYC updated"); qc.invalidateQueries({ queryKey: ["adminKyc"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const dispMut = useMutation({
+    mutationFn: (v: { contractId: string; release: boolean; reason: string }) => resolveDisp({ data: v }),
+    onSuccess: () => { toast.success("Dispute resolved"); qc.invalidateQueries({ queryKey: ["adminDisputes"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle className="text-sm">{t("admin.pendingKyc")}</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {(kycQ.data ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyKyc")}</p>}
+          {(kycQ.data as Array<{ id: string; user_id: string; submitted_at: string }> | undefined)?.map((k) => (
+            <div key={k.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+              <div>
+                <div className="font-mono text-xs">{k.user_id}</div>
+                <div className="text-[10px] text-muted-foreground">{new Date(k.submitted_at).toLocaleString()}</div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => kycMut.mutate({ kycId: k.id, approve: true })}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => kycMut.mutate({ kycId: k.id, approve: false, notes: "Rejected by admin" })}>Reject</Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm">{t("admin.disputes")}</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {(dispQ.data ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyDisputes")}</p>}
+          {(dispQ.data as Array<{ id: string; amount_cents: number; client_id: string; freelancer_id: string }> | undefined)?.map((c) => (
+            <div key={c.id} className="rounded-md border p-2 text-sm">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">{fmt(c.amount_cents)}</div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => dispMut.mutate({ contractId: c.id, release: true, reason: "Admin released to freelancer" })}>Release</Button>
+                  <Button size="sm" variant="destructive" onClick={() => dispMut.mutate({ contractId: c.id, release: false, reason: "Admin refunded client" })}>Refund</Button>
+                </div>
+              </div>
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                client {c.client_id.slice(0, 8)} · freelancer {c.freelancer_id.slice(0, 8)}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
