@@ -1215,6 +1215,213 @@ function AdminPanel() {
           ))}
         </CardContent>
       </Card>
+
+      <DepositsQueue />
     </div>
+  );
+}
+
+// ============ Top-up wallet (client) ============
+type DepositMethod = "vodafone_cash" | "instapay" | "reference" | "card";
+type DepositRow = { id: string; method: DepositMethod; amount_cents: number; status: string; reference: string | null; created_at: string; notes: string | null };
+
+function TopUpCard() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const listFn = useServerFn(listMyDeposits);
+  const q = useQuery({ queryKey: ["myDeposits"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as DepositRow[];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <WalletIcon className="h-4 w-4" />{t("topup.history")}
+        </CardTitle>
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <Plus className="me-1 h-4 w-4" />{t("topup.button")}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("topup.none")}</p>}
+        {rows.slice(0, 6).map((d) => (
+          <div key={d.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+            <div>
+              <div className="font-medium">{fmt(d.amount_cents)} · {t(`topup.${d.method}`)}</div>
+              {d.reference && <div className="text-[10px] text-muted-foreground">ref: {d.reference}</div>}
+            </div>
+            <Badge variant={d.status === "approved" ? "default" : d.status === "rejected" ? "destructive" : "secondary"}>
+              {t(`topup.${d.status}`)}
+            </Badge>
+          </div>
+        ))}
+      </CardContent>
+      <TopUpDialog open={open} onOpenChange={setOpen} />
+    </Card>
+  );
+}
+
+function TopUpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const createFn = useServerFn(createDepositRequest);
+  const [method, setMethod] = useState<DepositMethod>("vodafone_cash");
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const requiresReceipt = method === "vodafone_cash" || method === "instapay";
+  const destinationKey = `topup.destination_${method === "vodafone_cash" ? "vodafone" : method}`;
+
+  async function submit() {
+    const amt = Math.round(parseFloat(amount) * 100);
+    if (!amt || amt <= 0) {
+      toast.error(t("topup.amount"));
+      return;
+    }
+    setBusy(true);
+    try {
+      let receiptPath: string | undefined;
+      if (receipt) {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user!.id;
+        const safe = receipt.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        receiptPath = `${uid}/${Date.now()}-${safe}`;
+        const { error } = await supabase.storage
+          .from("deposit-receipts")
+          .upload(receiptPath, receipt, { upsert: false, contentType: receipt.type || undefined });
+        if (error) throw error;
+      }
+      await createFn({
+        data: {
+          method,
+          amountCents: amt,
+          reference: reference || undefined,
+          receiptPath,
+        },
+      });
+      toast.success(t("topup.submitted"));
+      qc.invalidateQueries({ queryKey: ["myDeposits"] });
+      setAmount(""); setReference(""); setReceipt(null); setMethod("vodafone_cash");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!busy ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t("topup.title")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>{t("topup.method")}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["vodafone_cash", "instapay", "reference", "card"] as DepositMethod[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMethod(m)}
+                  className={`rounded-md border p-2 text-sm ${method === m ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
+                >
+                  {t(`topup.${m}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-muted/40 p-2 text-xs">{t(destinationKey)}</div>
+
+          <div className="space-y-1.5">
+            <Label>{t("topup.amount")}</Label>
+            <Input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("topup.reference_input")}</Label>
+            <Input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={200} />
+          </div>
+
+          {requiresReceipt && (
+            <div className="space-y-1.5">
+              <Label>{t("topup.receipt")}</Label>
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-[10px] text-muted-foreground">{t("topup.receipt_hint")}</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
+          <Button onClick={submit} disabled={busy || !amount}>{busy ? t("kyc.uploading") : t("topup.submit")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ Admin: deposits queue ============
+function DepositsQueue() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListPendingDeposits);
+  const reviewFn = useServerFn(adminReviewDeposit);
+  const receiptFn = useServerFn(getReceiptUrl);
+  const q = useQuery({ queryKey: ["adminDeposits"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as Array<{
+    id: string; user_id: string; amount_cents: number; method: string; reference: string | null;
+    receipt_path: string | null; created_at: string;
+  }>;
+
+  const mut = useMutation({
+    mutationFn: (v: { depositId: string; approve: boolean; notes?: string }) => reviewFn({ data: v }),
+    onSuccess: () => { toast.success("Deposit reviewed"); qc.invalidateQueries({ queryKey: ["adminDeposits"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  async function openReceipt(path: string) {
+    try {
+      const url = await receiptFn({ data: { path } });
+      window.open(url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm">{t("admin.pendingDeposits")}</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyDeposits")}</p>}
+        {rows.map((d) => (
+          <div key={d.id} className="rounded-md border p-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">{fmt(d.amount_cents)} · {t(`topup.${d.method}`)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  user {d.user_id.slice(0, 8)} · {new Date(d.created_at).toLocaleString()}
+                  {d.reference ? ` · ref ${d.reference}` : ""}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {d.receipt_path && (
+                  <Button size="sm" variant="outline" onClick={() => openReceipt(d.receipt_path!)}>
+                    {t("admin.viewReceipt")}
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => mut.mutate({ depositId: d.id, approve: true })}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => mut.mutate({ depositId: d.id, approve: false, notes: "Rejected by admin" })}>Reject</Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
