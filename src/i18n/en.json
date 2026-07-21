@@ -103,7 +103,7 @@
     "dispute": "Dispute / Refund",
     "revision": "Request revision",
     "autoReleaseIn": "Auto-releases in {{days}} days",
-    "fee": "5% platform fee applies on release"
+    "fee": "7% platform fee applies on release"
   },
   "status": {
     "pending_funding": "Awaiting funding",
