@@ -900,7 +900,117 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeliveryDialog contractId={contract.id} open={showDelivery} onOpenChange={setShowDelivery} />
     </div>
+  );
+}
+
+// ============ Delivery upload ============
+function DeliveryDialog({
+  contractId,
+  open,
+  onOpenChange,
+}: {
+  contractId: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const submitFn = useServerFn(submitDelivery);
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+  function removeAt(i: number) {
+    setFiles((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function humanSize(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+    return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
+  async function confirmSend() {
+    if (files.length === 0) return;
+    setBusy(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user!.id;
+      const base = `${uid}/${contractId}/${Date.now()}`;
+      const uploaded: { path: string; name: string; size: number; mimeType?: string }[] = [];
+      for (const f of files) {
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${base}/${uploaded.length}-${safeName}`;
+        const { error } = await supabase.storage
+          .from("deliverables")
+          .upload(path, f, { upsert: false, contentType: f.type || undefined });
+        if (error) throw error;
+        uploaded.push({ path, name: f.name, size: f.size, mimeType: f.type || undefined });
+      }
+      await submitFn({ data: { contractId, files: uploaded } });
+      toast.success(t("delivery.sent"));
+      setFiles([]);
+      onOpenChange(false);
+      qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!busy ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{t("delivery.title")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed p-4 text-sm hover:bg-accent">
+            <Plus className="h-4 w-4" />
+            {t("delivery.pick")}
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {files.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t("delivery.empty")}</p>
+          )}
+          <div className="max-h-64 space-y-1 overflow-auto">
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}`} className="flex items-center justify-between rounded-md border p-2 text-sm">
+                <div className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{f.name}</div>
+                    <div className="text-[10px] text-muted-foreground">{humanSize(f.size)}</div>
+                  </div>
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => removeAt(i)} disabled={busy} aria-label={t("delivery.remove")}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
+          <Button onClick={confirmSend} disabled={busy || files.length === 0}>
+            {busy ? t("delivery.uploading") : t("delivery.confirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
