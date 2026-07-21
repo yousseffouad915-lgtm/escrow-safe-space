@@ -32,6 +32,47 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_deliverables: {
+        Row: {
+          contract_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          uploader_id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          uploader_id: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          uploader_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_deliverables_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           amount_cents: number
@@ -97,6 +138,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      deposit_requests: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["deposit_method"]
+          notes: string | null
+          receipt_path: string | null
+          reference: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["deposit_status"]
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          method: Database["public"]["Enums"]["deposit_method"]
+          notes?: string | null
+          receipt_path?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["deposit_status"]
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["deposit_method"]
+          notes?: string | null
+          receipt_path?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["deposit_status"]
+          user_id?: string
+        }
+        Relationships: []
       }
       escrow_transactions: {
         Row: {
@@ -520,6 +603,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_review_deposit: {
+        Args: { _approve: boolean; _deposit_id: string; _notes: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["deposit_method"]
+          notes: string | null
+          receipt_path: string | null
+          reference: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["deposit_status"]
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deposit_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_review_kyc: {
         Args: { _approve: boolean; _kyc_id: string; _notes: string }
         Returns: {
@@ -664,6 +769,8 @@ export type Database = {
         | "disputed"
         | "refunded"
         | "cancelled"
+      deposit_method: "vodafone_cash" | "instapay" | "reference" | "card"
+      deposit_status: "pending" | "approved" | "rejected"
       escrow_state: "Pending" | "Locked" | "Released" | "Refunded" | "Disputed"
       kyc_status: "pending" | "approved" | "rejected"
       ledger_kind:
@@ -682,6 +789,8 @@ export type Database = {
         | "dispute_resolved"
         | "kyc_status_changed"
         | "new_review"
+        | "deposit_reviewed"
+        | "work_delivered"
       project_status: "open" | "awarded" | "closed" | "cancelled"
       proposal_status: "submitted" | "accepted" | "rejected" | "withdrawn"
     }
@@ -821,6 +930,8 @@ export const Constants = {
         "refunded",
         "cancelled",
       ],
+      deposit_method: ["vodafone_cash", "instapay", "reference", "card"],
+      deposit_status: ["pending", "approved", "rejected"],
       escrow_state: ["Pending", "Locked", "Released", "Refunded", "Disputed"],
       kyc_status: ["pending", "approved", "rejected"],
       ledger_kind: [
@@ -840,6 +951,8 @@ export const Constants = {
         "dispute_resolved",
         "kyc_status_changed",
         "new_review",
+        "deposit_reviewed",
+        "work_delivered",
       ],
       project_status: ["open", "awarded", "closed", "cancelled"],
       proposal_status: ["submitted", "accepted", "rejected", "withdrawn"],
