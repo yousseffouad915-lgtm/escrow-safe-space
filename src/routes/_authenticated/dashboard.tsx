@@ -810,13 +810,13 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
   const { t } = useTranslation();
   const qc = useQueryClient();
   const fundFn = useServerFn(fundContract);
-  const submitWorkFn = useServerFn(submitWork);
   const approveFn = useServerFn(approveWork);
   const disputeFn = useServerFn(openDispute);
   const revisionFn = useServerFn(requestRevision);
   const [reason, setReason] = useState("");
   const [showDispute, setShowDispute] = useState(false);
   const [showRevision, setShowRevision] = useState(false);
+  const [showDelivery, setShowDelivery] = useState(false);
 
   const invalidate = () => qc.invalidateQueries();
 
