@@ -441,3 +441,148 @@ export const adminListDisputedContracts = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
+// -------- Deposits (wallet top-up) --------
+const depositMethods = ["vodafone_cash", "instapay", "reference", "card"] as const;
+
+export const createDepositRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        method: z.enum(depositMethods),
+        amountCents: z.number().int().positive(),
+        reference: z.string().max(200).optional(),
+        receiptPath: z.string().max(500).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("deposit_requests")
+      .insert({
+        user_id: context.userId,
+        method: data.method,
+        amount_cents: data.amountCents,
+        reference: data.reference ?? null,
+        receipt_path: data.receiptPath ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const listMyDeposits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("deposit_requests")
+      .select("*")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const adminListPendingDeposits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("deposit_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const adminReviewDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        depositId: z.string().uuid(),
+        approve: z.boolean(),
+        notes: z.string().max(1000).optional(),
+      })
+      .parse(d),
+  )
+  .handler(({ data, context }) =>
+    callRpc(context, "admin_review_deposit", {
+      _deposit_id: data.depositId,
+      _approve: data.approve,
+      _notes: data.notes ?? null,
+    }),
+  );
+
+export const getReceiptUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ path: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: url, error } = await context.supabase.storage
+      .from("deposit-receipts")
+      .createSignedUrl(data.path, 60 * 10);
+    if (error) throw new Error(error.message);
+    return url.signedUrl;
+  });
+
+// -------- Deliverables (freelancer work upload) --------
+export const submitDelivery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        contractId: z.string().uuid(),
+        files: z
+          .array(
+            z.object({
+              path: z.string().min(1),
+              name: z.string().min(1),
+              size: z.number().int().nonnegative(),
+              mimeType: z.string().max(200).optional(),
+            }),
+          )
+          .min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const rows = data.files.map((f) => ({
+      contract_id: data.contractId,
+      uploader_id: context.userId,
+      file_name: f.name,
+      file_path: f.path,
+      file_size: f.size,
+      mime_type: f.mimeType ?? null,
+    }));
+    const { error: insErr } = await context.supabase.from("contract_deliverables").insert(rows);
+    if (insErr) throw new Error(insErr.message);
+
+    return callRpc(context, "submit_work", { _contract_id: data.contractId });
+  });
+
+export const listContractDeliverables = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ contractId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("contract_deliverables")
+      .select("*")
+      .eq("contract_id", data.contractId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const getDeliverableUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ path: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: url, error } = await context.supabase.storage
+      .from("deliverables")
+      .createSignedUrl(data.path, 60 * 10);
+    if (error) throw new Error(error.message);
+    return url.signedUrl;
+  });

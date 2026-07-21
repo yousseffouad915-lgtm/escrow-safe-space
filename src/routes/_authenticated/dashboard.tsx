@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Globe, Lock, LogOut, Shield, Bell, Wallet as WalletIcon, Star } from "lucide-react";
+import { Globe, Lock, LogOut, Shield, Bell, Wallet as WalletIcon, Star, Upload, X, FileText, Plus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/i18n/LanguageProvider";
@@ -54,6 +54,12 @@ import {
   adminListDisputedContracts,
   adminReviewKyc,
   adminResolveDispute,
+  createDepositRequest,
+  listMyDeposits,
+  adminListPendingDeposits,
+  adminReviewDeposit,
+  getReceiptUrl,
+  submitDelivery,
 } from "@/lib/trustlaunch.functions";
 
 // -------- Role-based dispatcher route --------
@@ -623,6 +629,10 @@ function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
       </Card>
 
       <div className="lg:col-span-2">
+        <TopUpCard />
+      </div>
+
+      <div className="lg:col-span-2">
         <ContractsPanel role="client" kycApproved={kycApproved} />
       </div>
     </div>
@@ -804,13 +814,13 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
   const { t } = useTranslation();
   const qc = useQueryClient();
   const fundFn = useServerFn(fundContract);
-  const submitWorkFn = useServerFn(submitWork);
   const approveFn = useServerFn(approveWork);
   const disputeFn = useServerFn(openDispute);
   const revisionFn = useServerFn(requestRevision);
   const [reason, setReason] = useState("");
   const [showDispute, setShowDispute] = useState(false);
   const [showRevision, setShowRevision] = useState(false);
+  const [showDelivery, setShowDelivery] = useState(false);
 
   const invalidate = () => qc.invalidateQueries();
 
@@ -851,8 +861,8 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
             </Button>
           )}
           {iAmFreelancer && contract.status === "funded_locked" && (
-            <Button size="sm" onClick={() => call(() => submitWorkFn({ data: { contractId: contract.id } }), "Submitted")}>
-              {t("dashboard.submit")}
+            <Button size="sm" onClick={() => setShowDelivery(true)}>
+              <Upload className="me-1 h-3 w-3" />{t("delivery.title")}
             </Button>
           )}
           {iAmClient && contract.status === "work_submitted" && (
@@ -894,7 +904,117 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeliveryDialog contractId={contract.id} open={showDelivery} onOpenChange={setShowDelivery} />
     </div>
+  );
+}
+
+// ============ Delivery upload ============
+function DeliveryDialog({
+  contractId,
+  open,
+  onOpenChange,
+}: {
+  contractId: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const submitFn = useServerFn(submitDelivery);
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+  function removeAt(i: number) {
+    setFiles((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function humanSize(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+    return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
+  async function confirmSend() {
+    if (files.length === 0) return;
+    setBusy(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user!.id;
+      const base = `${uid}/${contractId}/${Date.now()}`;
+      const uploaded: { path: string; name: string; size: number; mimeType?: string }[] = [];
+      for (const f of files) {
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${base}/${uploaded.length}-${safeName}`;
+        const { error } = await supabase.storage
+          .from("deliverables")
+          .upload(path, f, { upsert: false, contentType: f.type || undefined });
+        if (error) throw error;
+        uploaded.push({ path, name: f.name, size: f.size, mimeType: f.type || undefined });
+      }
+      await submitFn({ data: { contractId, files: uploaded } });
+      toast.success(t("delivery.sent"));
+      setFiles([]);
+      onOpenChange(false);
+      qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!busy ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{t("delivery.title")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed p-4 text-sm hover:bg-accent">
+            <Plus className="h-4 w-4" />
+            {t("delivery.pick")}
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {files.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t("delivery.empty")}</p>
+          )}
+          <div className="max-h-64 space-y-1 overflow-auto">
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}`} className="flex items-center justify-between rounded-md border p-2 text-sm">
+                <div className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{f.name}</div>
+                    <div className="text-[10px] text-muted-foreground">{humanSize(f.size)}</div>
+                  </div>
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => removeAt(i)} disabled={busy} aria-label={t("delivery.remove")}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
+          <Button onClick={confirmSend} disabled={busy || files.length === 0}>
+            {busy ? t("delivery.uploading") : t("delivery.confirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1095,6 +1215,213 @@ function AdminPanel() {
           ))}
         </CardContent>
       </Card>
+
+      <DepositsQueue />
     </div>
+  );
+}
+
+// ============ Top-up wallet (client) ============
+type DepositMethod = "vodafone_cash" | "instapay" | "reference" | "card";
+type DepositRow = { id: string; method: DepositMethod; amount_cents: number; status: string; reference: string | null; created_at: string; notes: string | null };
+
+function TopUpCard() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const listFn = useServerFn(listMyDeposits);
+  const q = useQuery({ queryKey: ["myDeposits"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as DepositRow[];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <WalletIcon className="h-4 w-4" />{t("topup.history")}
+        </CardTitle>
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <Plus className="me-1 h-4 w-4" />{t("topup.button")}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("topup.none")}</p>}
+        {rows.slice(0, 6).map((d) => (
+          <div key={d.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+            <div>
+              <div className="font-medium">{fmt(d.amount_cents)} · {t(`topup.${d.method}`)}</div>
+              {d.reference && <div className="text-[10px] text-muted-foreground">ref: {d.reference}</div>}
+            </div>
+            <Badge variant={d.status === "approved" ? "default" : d.status === "rejected" ? "destructive" : "secondary"}>
+              {t(`topup.${d.status}`)}
+            </Badge>
+          </div>
+        ))}
+      </CardContent>
+      <TopUpDialog open={open} onOpenChange={setOpen} />
+    </Card>
+  );
+}
+
+function TopUpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const createFn = useServerFn(createDepositRequest);
+  const [method, setMethod] = useState<DepositMethod>("vodafone_cash");
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const requiresReceipt = method === "vodafone_cash" || method === "instapay";
+  const destinationKey = `topup.destination_${method === "vodafone_cash" ? "vodafone" : method}`;
+
+  async function submit() {
+    const amt = Math.round(parseFloat(amount) * 100);
+    if (!amt || amt <= 0) {
+      toast.error(t("topup.amount"));
+      return;
+    }
+    setBusy(true);
+    try {
+      let receiptPath: string | undefined;
+      if (receipt) {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user!.id;
+        const safe = receipt.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        receiptPath = `${uid}/${Date.now()}-${safe}`;
+        const { error } = await supabase.storage
+          .from("deposit-receipts")
+          .upload(receiptPath, receipt, { upsert: false, contentType: receipt.type || undefined });
+        if (error) throw error;
+      }
+      await createFn({
+        data: {
+          method,
+          amountCents: amt,
+          reference: reference || undefined,
+          receiptPath,
+        },
+      });
+      toast.success(t("topup.submitted"));
+      qc.invalidateQueries({ queryKey: ["myDeposits"] });
+      setAmount(""); setReference(""); setReceipt(null); setMethod("vodafone_cash");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!busy ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t("topup.title")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>{t("topup.method")}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["vodafone_cash", "instapay", "reference", "card"] as DepositMethod[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMethod(m)}
+                  className={`rounded-md border p-2 text-sm ${method === m ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
+                >
+                  {t(`topup.${m}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-muted/40 p-2 text-xs">{t(destinationKey)}</div>
+
+          <div className="space-y-1.5">
+            <Label>{t("topup.amount")}</Label>
+            <Input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("topup.reference_input")}</Label>
+            <Input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={200} />
+          </div>
+
+          {requiresReceipt && (
+            <div className="space-y-1.5">
+              <Label>{t("topup.receipt")}</Label>
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-[10px] text-muted-foreground">{t("topup.receipt_hint")}</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
+          <Button onClick={submit} disabled={busy || !amount}>{busy ? t("kyc.uploading") : t("topup.submit")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ Admin: deposits queue ============
+function DepositsQueue() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListPendingDeposits);
+  const reviewFn = useServerFn(adminReviewDeposit);
+  const receiptFn = useServerFn(getReceiptUrl);
+  const q = useQuery({ queryKey: ["adminDeposits"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as Array<{
+    id: string; user_id: string; amount_cents: number; method: string; reference: string | null;
+    receipt_path: string | null; created_at: string;
+  }>;
+
+  const mut = useMutation({
+    mutationFn: (v: { depositId: string; approve: boolean; notes?: string }) => reviewFn({ data: v }),
+    onSuccess: () => { toast.success("Deposit reviewed"); qc.invalidateQueries({ queryKey: ["adminDeposits"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  async function openReceipt(path: string) {
+    try {
+      const url = await receiptFn({ data: { path } });
+      window.open(url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "error");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm">{t("admin.pendingDeposits")}</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyDeposits")}</p>}
+        {rows.map((d) => (
+          <div key={d.id} className="rounded-md border p-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">{fmt(d.amount_cents)} · {t(`topup.${d.method}`)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  user {d.user_id.slice(0, 8)} · {new Date(d.created_at).toLocaleString()}
+                  {d.reference ? ` · ref ${d.reference}` : ""}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {d.receipt_path && (
+                  <Button size="sm" variant="outline" onClick={() => openReceipt(d.receipt_path!)}>
+                    {t("admin.viewReceipt")}
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => mut.mutate({ depositId: d.id, approve: true })}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => mut.mutate({ depositId: d.id, approve: false, notes: "Rejected by admin" })}>Reject</Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
