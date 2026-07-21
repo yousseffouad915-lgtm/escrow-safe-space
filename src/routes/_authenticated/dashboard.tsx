@@ -629,6 +629,10 @@ function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
       </Card>
 
       <div className="lg:col-span-2">
+        <TopUpCard />
+      </div>
+
+      <div className="lg:col-span-2">
         <ContractsPanel role="client" kycApproved={kycApproved} />
       </div>
     </div>
