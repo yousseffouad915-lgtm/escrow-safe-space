@@ -857,8 +857,8 @@ function ContractRow({ contract, role, kycApproved }: { contract: Contract; role
             </Button>
           )}
           {iAmFreelancer && contract.status === "funded_locked" && (
-            <Button size="sm" onClick={() => call(() => submitWorkFn({ data: { contractId: contract.id } }), "Submitted")}>
-              {t("dashboard.submit")}
+            <Button size="sm" onClick={() => setShowDelivery(true)}>
+              <Upload className="me-1 h-3 w-3" />{t("delivery.title")}
             </Button>
           )}
           {iAmClient && contract.status === "work_submitted" && (
