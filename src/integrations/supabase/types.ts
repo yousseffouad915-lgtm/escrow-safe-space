@@ -181,6 +181,56 @@ export type Database = {
         }
         Relationships: []
       }
+      dispute_tickets: {
+        Row: {
+          client_id: string
+          contract_id: string
+          created_at: string
+          freelancer_id: string
+          id: string
+          opened_by: string
+          reason: string
+          resolution_note: string | null
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          contract_id: string
+          created_at?: string
+          freelancer_id: string
+          id?: string
+          opened_by: string
+          reason: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          contract_id?: string
+          created_at?: string
+          freelancer_id?: string
+          id?: string
+          opened_by?: string
+          reason?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_tickets_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escrow_transactions: {
         Row: {
           actor_id: string | null
@@ -224,6 +274,10 @@ export type Database = {
       }
       kyc_submissions: {
         Row: {
+          auto_verified: boolean
+          back_document_path: string | null
+          capture_meta: Json | null
+          document_type: string
           id: string
           id_document_path: string
           notes: string | null
@@ -235,6 +289,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_verified?: boolean
+          back_document_path?: string | null
+          capture_meta?: Json | null
+          document_type?: string
           id?: string
           id_document_path: string
           notes?: string | null
@@ -246,6 +304,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_verified?: boolean
+          back_document_path?: string | null
+          capture_meta?: Json | null
+          document_type?: string
           id?: string
           id_document_path?: string
           notes?: string | null
@@ -628,6 +690,10 @@ export type Database = {
       admin_review_kyc: {
         Args: { _approve: boolean; _kyc_id: string; _notes: string }
         Returns: {
+          auto_verified: boolean
+          back_document_path: string | null
+          capture_meta: Json | null
+          document_type: string
           id: string
           id_document_path: string
           notes: string | null
@@ -666,6 +732,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "contracts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_deposit_auto: {
+        Args: {
+          _amount_cents: number
+          _method: Database["public"]["Enums"]["deposit_method"]
+          _receipt_path: string
+          _reference: string
+        }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["deposit_method"]
+          notes: string | null
+          receipt_path: string | null
+          reference: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["deposit_status"]
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deposit_requests"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -733,6 +826,36 @@ export type Database = {
       }
       require_kyc_approved: { Args: { _user_id: string }; Returns: undefined }
       run_auto_releases: { Args: never; Returns: number }
+      submit_kyc_auto: {
+        Args: {
+          _back_path: string
+          _document_type: string
+          _front_path: string
+          _meta?: Json
+          _selfie_path: string
+        }
+        Returns: {
+          auto_verified: boolean
+          back_document_path: string | null
+          capture_meta: Json | null
+          document_type: string
+          id: string
+          id_document_path: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          selfie_path: string
+          status: Database["public"]["Enums"]["kyc_status"]
+          submitted_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "kyc_submissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_work: {
         Args: { _contract_id: string }
         Returns: {
