@@ -1256,7 +1256,7 @@ function TopUpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
           receiptPath,
         },
       });
-      toast.success(t("topup.submitted"));
+      toast.success(t("topup.autoCredited"));
       qc.invalidateQueries({ queryKey: ["myDeposits"] });
       setAmount(""); setReference(""); setReceipt(null); setMethod("vodafone_cash");
       onOpenChange(false);
