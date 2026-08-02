@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { KycCaptureFlow } from "@/components/KycCaptureFlow";
+import { DocumentViewer } from "@/components/DocumentViewer";
 import { Globe, Lock, LogOut, Shield, Bell, Wallet as WalletIcon, Star, Upload, X, FileText, Plus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +32,6 @@ import {
   getMyRoles,
   setMyRoles,
   getMyKyc,
-  submitKyc,
   getMyWallet,
   listMyNotifications,
   markNotificationRead,
@@ -51,7 +52,7 @@ import {
   listMyReviewableContracts,
   listReviewsForUser,
   adminListPendingKyc,
-  adminListDisputedContracts,
+  adminListDisputeTickets,
   adminReviewKyc,
   adminResolveDispute,
   createDepositRequest,
@@ -293,9 +294,8 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
   const [picked, setPicked] = useState<{ client: boolean; freelancer: boolean }>({ client: false, freelancer: false });
   const [savedRoles, setSavedRoles] = useState(false);
   const rolesFn = useServerFn(setMyRoles);
-  const submitKycFn = useServerFn(submitKyc);
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function saveRoles() {
@@ -311,34 +311,6 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
       await rolesFn({ data: { roles: list } });
       setSavedRoles(true);
       setStep(1);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function uploadAndSubmitKyc() {
-    if (!idFile || !selfieFile) {
-      toast.error("Upload both files");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user!.id;
-      const base = `${uid}/${Date.now()}`;
-      const idPath = `${base}/id.${idFile.name.split(".").pop() || "bin"}`;
-      const selfiePath = `${base}/selfie.${selfieFile.name.split(".").pop() || "bin"}`;
-      const [u1, u2] = await Promise.all([
-        supabase.storage.from("kyc-documents").upload(idPath, idFile, { upsert: true }),
-        supabase.storage.from("kyc-documents").upload(selfiePath, selfieFile, { upsert: true }),
-      ]);
-      if (u1.error) throw u1.error;
-      if (u2.error) throw u2.error;
-      await submitKycFn({ data: { idDocumentPath: idPath, selfiePath } });
-      toast.success("KYC submitted");
-      setStep(2);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "error");
     } finally {
@@ -379,14 +351,16 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
             <>
               <div className="text-sm font-medium">{t("onboarding.stepKyc")}</div>
               <p className="text-xs text-muted-foreground">{t("onboarding.kycNote")}</p>
-              <div className="space-y-2">
-                <Label>{t("kyc.idDoc")}</Label>
-                <Input type="file" accept="image/*,application/pdf" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("kyc.selfie")}</Label>
-                <Input type="file" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] ?? null)} />
-              </div>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>• {t("capture.guideLight")}</li>
+                <li>• {t("capture.guideClarity")}</li>
+              </ul>
+              {verified && <Badge>{t("capture.approved")}</Badge>}
+              <KycCaptureFlow
+                open={captureOpen}
+                onOpenChange={setCaptureOpen}
+                onDone={() => { setVerified(true); setStep(2); }}
+              />
             </>
           )}
 
@@ -412,8 +386,8 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
               <Button variant="ghost" onClick={() => setStep(2)} disabled={busy}>
                 {t("onboarding.skipKyc")}
               </Button>
-              <Button onClick={uploadAndSubmitKyc} disabled={busy || !idFile || !selfieFile}>
-                {busy ? t("kyc.uploading") : t("kyc.submit")}
+              <Button onClick={() => setCaptureOpen(true)} disabled={busy}>
+                {t("capture.openCamera")}
               </Button>
             </div>
           )}
@@ -475,68 +449,9 @@ function KycCard({ kyc, onSubmitted }: { kyc: { status: string } | null | undefi
             {status === "none" ? t("kyc.submit") : t("kyc.reupload")}
           </Button>
         )}
-        <KycDialog open={open} onOpenChange={setOpen} onSubmitted={onSubmitted} />
+        <KycCaptureFlow open={open} onOpenChange={setOpen} onDone={onSubmitted} />
       </CardContent>
     </Card>
-  );
-}
-
-function KycDialog({ open, onOpenChange, onSubmitted }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmitted: () => void }) {
-  const { t } = useTranslation();
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [selfieFile, setSelfieFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submitKycFn = useServerFn(submitKyc);
-
-  async function upload() {
-    if (!idFile || !selfieFile) return;
-    setBusy(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user!.id;
-      const base = `${uid}/${Date.now()}`;
-      const idPath = `${base}/id.${idFile.name.split(".").pop() || "bin"}`;
-      const selfiePath = `${base}/selfie.${selfieFile.name.split(".").pop() || "bin"}`;
-      const [u1, u2] = await Promise.all([
-        supabase.storage.from("kyc-documents").upload(idPath, idFile, { upsert: true }),
-        supabase.storage.from("kyc-documents").upload(selfiePath, selfieFile, { upsert: true }),
-      ]);
-      if (u1.error) throw u1.error;
-      if (u2.error) throw u2.error;
-      await submitKycFn({ data: { idDocumentPath: idPath, selfiePath } });
-      toast.success("KYC submitted");
-      onSubmitted();
-      onOpenChange(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("kyc.title")}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{t("kyc.subtitle")}</p>
-          <div className="space-y-1.5">
-            <Label>{t("kyc.idDoc")}</Label>
-            <Input type="file" accept="image/*,application/pdf" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("kyc.selfie")}</Label>
-            <Input type="file" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] ?? null)} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
-          <Button onClick={upload} disabled={busy || !idFile || !selfieFile}>{busy ? t("kyc.uploading") : t("kyc.submit")}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -1153,15 +1068,32 @@ function ReviewsSection() {
 }
 
 // ============ Admin panel ============
+type TicketKyc = {
+  id_document_path: string | null;
+  back_document_path: string | null;
+  selfie_path: string | null;
+  document_type: string | null;
+} | null;
+type DisputeTicket = {
+  id: string;
+  contract_id: string;
+  client_id: string;
+  freelancer_id: string;
+  amount_cents: number;
+  reason: string | null;
+  clientKyc: TicketKyc;
+  freelancerKyc: TicketKyc;
+};
+
 function AdminPanel() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const kycFn = useServerFn(adminListPendingKyc);
-  const dispFn = useServerFn(adminListDisputedContracts);
+  const dispFn = useServerFn(adminListDisputeTickets);
   const reviewKyc = useServerFn(adminReviewKyc);
   const resolveDisp = useServerFn(adminResolveDispute);
   const kycQ = useQuery({ queryKey: ["adminKyc"], queryFn: () => kycFn() });
-  const dispQ = useQuery({ queryKey: ["adminDisputes"], queryFn: () => dispFn() });
+  const dispQ = useQuery({ queryKey: ["adminDisputeTickets"], queryFn: () => dispFn() });
 
   const kycMut = useMutation({
     mutationFn: (v: { kycId: string; approve: boolean; notes?: string }) => reviewKyc({ data: v }),
@@ -1170,7 +1102,7 @@ function AdminPanel() {
   });
   const dispMut = useMutation({
     mutationFn: (v: { contractId: string; release: boolean; reason: string }) => resolveDisp({ data: v }),
-    onSuccess: () => { toast.success("Dispute resolved"); qc.invalidateQueries({ queryKey: ["adminDisputes"] }); },
+    onSuccess: () => { toast.success("Dispute resolved"); qc.invalidateQueries({ queryKey: ["adminDisputeTickets"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -1196,20 +1128,43 @@ function AdminPanel() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">{t("admin.disputes")}</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {(dispQ.data ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyDisputes")}</p>}
-          {(dispQ.data as Array<{ id: string; amount_cents: number; client_id: string; freelancer_id: string }> | undefined)?.map((c) => (
-            <div key={c.id} className="rounded-md border p-2 text-sm">
+        <CardHeader>
+          <CardTitle className="text-sm">{t("disputes.tickets")}</CardTitle>
+          <p className="text-[11px] text-muted-foreground">{t("disputes.manualOnly")}</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(dispQ.data ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("disputes.empty")}</p>}
+          {(dispQ.data as DisputeTicket[] | undefined)?.map((tk) => (
+            <div key={tk.id} className="space-y-2 rounded-md border p-3 text-sm">
               <div className="flex items-center justify-between">
-                <div className="font-medium">{fmt(c.amount_cents)}</div>
+                <div className="font-medium">{fmt(tk.amount_cents)}</div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => dispMut.mutate({ contractId: c.id, release: true, reason: "Admin released to freelancer" })}>Release</Button>
-                  <Button size="sm" variant="destructive" onClick={() => dispMut.mutate({ contractId: c.id, release: false, reason: "Admin refunded client" })}>Refund</Button>
+                  <Button size="sm" onClick={() => dispMut.mutate({ contractId: tk.contract_id, release: true, reason: "Admin released to freelancer" })}>
+                    {t("disputes.releaseToFreelancer")}
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => dispMut.mutate({ contractId: tk.contract_id, release: false, reason: "Admin refunded client" })}>
+                    {t("disputes.refundClient")}
+                  </Button>
                 </div>
               </div>
-              <div className="mt-1 text-[10px] text-muted-foreground">
-                client {c.client_id.slice(0, 8)} · freelancer {c.freelancer_id.slice(0, 8)}
+              <div className="rounded-md bg-muted/50 p-2 text-xs">
+                <span className="font-medium">{t("disputes.reason")}: </span>
+                {tk.reason || "—"}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {([["client", tk.clientKyc, tk.client_id], ["freelancer", tk.freelancerKyc, tk.freelancer_id]] as const).map(([role, kyc, uid]) => (
+                  <div key={role} className="space-y-1.5 rounded-md border p-2">
+                    <div className="text-xs font-medium">{role === "client" ? t("disputes.client") : t("disputes.freelancer")}</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">{uid.slice(0, 8)}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <DocumentViewer bucket="kyc" path={kyc?.id_document_path} label={t("docs.idFront")} />
+                      {kyc?.back_document_path && (
+                        <DocumentViewer bucket="kyc" path={kyc.back_document_path} label={t("docs.idBack")} />
+                      )}
+                      <DocumentViewer bucket="kyc" path={kyc?.selfie_path} label={t("docs.selfie")} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -1301,7 +1256,7 @@ function TopUpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
           receiptPath,
         },
       });
-      toast.success(t("topup.submitted"));
+      toast.success(t("topup.autoCredited"));
       qc.invalidateQueries({ queryKey: ["myDeposits"] });
       setAmount(""); setReference(""); setReceipt(null); setMethod("vodafone_cash");
       onOpenChange(false);
