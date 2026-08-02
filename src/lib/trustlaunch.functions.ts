@@ -627,8 +627,15 @@ export const adminListDisputeTickets = createServerFn({ method: "GET" })
     const latest = new Map<string, NonNullable<typeof kyc>[number]>();
     for (const k of kyc ?? []) if (!latest.has(k.user_id)) latest.set(k.user_id, k);
 
+    const { data: contracts } = await context.supabase
+      .from("contracts")
+      .select("id, amount_cents")
+      .in("id", tickets.map((t) => t.contract_id));
+    const amounts = new Map((contracts ?? []).map((c) => [c.id, c.amount_cents]));
+
     return tickets.map((t) => ({
       ...t,
+      amount_cents: amounts.get(t.contract_id) ?? 0,
       clientKyc: latest.get(t.client_id) ?? null,
       freelancerKyc: latest.get(t.freelancer_id) ?? null,
     }));
