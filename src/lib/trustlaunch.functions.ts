@@ -457,21 +457,15 @@ export const createDepositRequest = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("deposit_requests")
-      .insert({
-        user_id: context.userId,
-        method: data.method,
-        amount_cents: data.amountCents,
-        reference: data.reference ?? null,
-        receipt_path: data.receiptPath ?? null,
-      })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
-  });
+  // Automated verification: the deposit is checked and credited immediately.
+  .handler(({ data, context }) =>
+    callRpc(context, "create_deposit_auto", {
+      _method: data.method,
+      _amount_cents: data.amountCents,
+      _reference: data.reference ?? null,
+      _receipt_path: data.receiptPath ?? null,
+    }),
+  );
 
 export const listMyDeposits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
