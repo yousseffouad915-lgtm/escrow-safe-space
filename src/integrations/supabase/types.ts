@@ -881,6 +881,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      support_context: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "client" | "freelancer" | "admin"
