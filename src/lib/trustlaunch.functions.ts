@@ -586,3 +586,77 @@ export const getDeliverableUrl = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return url.signedUrl;
   });
+
+// -------- Automated identity verification --------
+export const submitKycAuto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        documentType: z.enum(["national_id", "passport"]),
+        frontPath: z.string().min(1),
+        backPath: z.string().min(1).nullable().optional(),
+        selfiePath: z.string().min(1),
+        meta: z.record(z.string(), z.unknown()).optional(),
+      })
+      .parse(d),
+  )
+  .handler(({ data, context }) =>
+    callRpc(context, "submit_kyc_auto", {
+      _document_type: data.documentType,
+      _front_path: data.frontPath,
+      _back_path: data.backPath ?? null,
+      _selfie_path: data.selfiePath,
+      _meta: data.meta ?? null,
+    }),
+  );
+
+// -------- Dispute review tickets (manual, admin only) --------
+export const adminListDisputeTickets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: tickets, error } = await context.supabase
+      .from("dispute_tickets")
+      .select("*")
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    if (!tickets || tickets.length === 0) return [];
+
+    const userIds = Array.from(new Set(tickets.flatMap((t) => [t.client_id, t.freelancer_id])));
+    const { data: kyc } = await context.supabase
+      .from("kyc_submissions")
+      .select("user_id, document_type, id_document_path, back_document_path, selfie_path, submitted_at, status")
+      .in("user_id", userIds)
+      .order("submitted_at", { ascending: false });
+
+    const latest = new Map<string, NonNullable<typeof kyc>[number]>();
+    for (const k of kyc ?? []) if (!latest.has(k.user_id)) latest.set(k.user_id, k);
+
+    return tickets.map((t) => ({
+      ...t,
+      clientKyc: latest.get(t.client_id) ?? null,
+      freelancerKyc: latest.get(t.freelancer_id) ?? null,
+    }));
+  });
+
+// Signed URL for an identity document. Admins can open any document; users only their own.
+export const getKycFileUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ path: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const isOwn = data.path.startsWith(`${context.userId}/`);
+    if (!isOwn) {
+      const { data: isAdmin } = await context.supabase.rpc("has_role", {
+        _user_id: context.userId,
+        _role: "admin",
+      });
+      if (!isAdmin) throw new Error("FORBIDDEN");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: url, error } = await supabaseAdmin.storage
+      .from("kyc-documents")
+      .createSignedUrl(data.path, 60 * 10);
+    if (error) throw new Error(error.message);
+    return url.signedUrl;
+  });
