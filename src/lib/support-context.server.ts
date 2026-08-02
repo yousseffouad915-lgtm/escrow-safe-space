@@ -20,7 +20,8 @@ export async function getSupportContext(): Promise<string> {
     )}`;
     cache = { at: Date.now(), text };
     return text;
-  } catch {
+  } catch (e) {
+    console.error("[support-context] failed", e);
     return "LIVE PLATFORM CONTEXT unavailable right now; answer from general TrustLance knowledge and avoid quoting exact numbers.";
   }
 }
