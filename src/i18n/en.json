@@ -170,7 +170,8 @@
     "rejected": "Rejected",
     "history": "Top-up history",
     "none": "No top-up requests yet.",
-    "submitted": "Top-up request submitted"
+    "submitted": "Top-up request submitted",
+    "autoCredited": "Your wallet was credited automatically."
   },
   "delivery": {
     "title": "Deliver work",
@@ -185,5 +186,52 @@
     "title": "TrustLance Support",
     "placeholder": "Ask anything about escrow, KYC, or your project…",
     "escalation": "This looks serious. Please email our support team:"
+  },
+  "capture": {
+    "title": "Identity verification",
+    "chooseDoc": "Choose the document you want to verify with.",
+    "nationalId": "National ID",
+    "nationalIdDesc": "For Egyptian citizens — front and back required.",
+    "passport": "Passport",
+    "passportDesc": "For non-Egyptians — photo page only.",
+    "guideTitle": "Before you start",
+    "guideLight": "Please avoid very bright or very dim lighting.",
+    "guideClarity": "Make sure all words and numbers are clearly readable.",
+    "guideFrame": "Fit the document fully inside the on-screen frame.",
+    "guideSteps": "You'll capture the document, then a quick selfie.",
+    "openCamera": "Open camera",
+    "shoot": "Capture",
+    "retake": "Retake",
+    "shotFront": "Capture the front of your ID",
+    "shotBack": "Capture the back of your ID",
+    "shotPassport": "Capture your passport photo page",
+    "shotSelfie": "Take a selfie",
+    "reviewHint": "Review your captures. Tap any image to retake it.",
+    "submit": "Verify now",
+    "approved": "Identity verified automatically",
+    "checkLight": "Lighting is too bright or too dim — please adjust and retry.",
+    "checkSharp": "The image looks blurry — hold steady and retry.",
+    "cameraError": "Camera unavailable. Please allow camera access and retry.",
+    "missingShot": "A required capture is missing."
+  },
+  "docs": {
+    "missing": "No file",
+    "failed": "Couldn't load the file.",
+    "openNewTab": "Open in new tab",
+    "idFront": "ID front",
+    "idBack": "ID back",
+    "selfie": "Selfie",
+    "receipt": "Receipt"
+  },
+  "disputes": {
+    "tickets": "Dispute review tickets",
+    "empty": "No dispute tickets open.",
+    "reason": "Dispute reason",
+    "client": "Client",
+    "freelancer": "Freelancer",
+    "docs": "Identity documents",
+    "releaseToFreelancer": "Release to freelancer",
+    "refundClient": "Refund client",
+    "manualOnly": "Disputes are always reviewed manually by an admin."
   }
 }
