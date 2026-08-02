@@ -293,9 +293,8 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
   const [picked, setPicked] = useState<{ client: boolean; freelancer: boolean }>({ client: false, freelancer: false });
   const [savedRoles, setSavedRoles] = useState(false);
   const rolesFn = useServerFn(setMyRoles);
-  const submitKycFn = useServerFn(submitKyc);
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function saveRoles() {
@@ -311,34 +310,6 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
       await rolesFn({ data: { roles: list } });
       setSavedRoles(true);
       setStep(1);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function uploadAndSubmitKyc() {
-    if (!idFile || !selfieFile) {
-      toast.error("Upload both files");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user!.id;
-      const base = `${uid}/${Date.now()}`;
-      const idPath = `${base}/id.${idFile.name.split(".").pop() || "bin"}`;
-      const selfiePath = `${base}/selfie.${selfieFile.name.split(".").pop() || "bin"}`;
-      const [u1, u2] = await Promise.all([
-        supabase.storage.from("kyc-documents").upload(idPath, idFile, { upsert: true }),
-        supabase.storage.from("kyc-documents").upload(selfiePath, selfieFile, { upsert: true }),
-      ]);
-      if (u1.error) throw u1.error;
-      if (u2.error) throw u2.error;
-      await submitKycFn({ data: { idDocumentPath: idPath, selfiePath } });
-      toast.success("KYC submitted");
-      setStep(2);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "error");
     } finally {
@@ -379,14 +350,16 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
             <>
               <div className="text-sm font-medium">{t("onboarding.stepKyc")}</div>
               <p className="text-xs text-muted-foreground">{t("onboarding.kycNote")}</p>
-              <div className="space-y-2">
-                <Label>{t("kyc.idDoc")}</Label>
-                <Input type="file" accept="image/*,application/pdf" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("kyc.selfie")}</Label>
-                <Input type="file" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] ?? null)} />
-              </div>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>• {t("capture.guideLight")}</li>
+                <li>• {t("capture.guideClarity")}</li>
+              </ul>
+              {verified && <Badge>{t("capture.approved")}</Badge>}
+              <KycCaptureFlow
+                open={captureOpen}
+                onOpenChange={setCaptureOpen}
+                onDone={() => { setVerified(true); setStep(2); }}
+              />
             </>
           )}
 
@@ -412,8 +385,8 @@ function OnboardingWizard({ onDone }: { onDone: () => void }) {
               <Button variant="ghost" onClick={() => setStep(2)} disabled={busy}>
                 {t("onboarding.skipKyc")}
               </Button>
-              <Button onClick={uploadAndSubmitKyc} disabled={busy || !idFile || !selfieFile}>
-                {busy ? t("kyc.uploading") : t("kyc.submit")}
+              <Button onClick={() => setCaptureOpen(true)} disabled={busy}>
+                {t("capture.openCamera")}
               </Button>
             </div>
           )}
@@ -475,68 +448,9 @@ function KycCard({ kyc, onSubmitted }: { kyc: { status: string } | null | undefi
             {status === "none" ? t("kyc.submit") : t("kyc.reupload")}
           </Button>
         )}
-        <KycDialog open={open} onOpenChange={setOpen} onSubmitted={onSubmitted} />
+        <KycCaptureFlow open={open} onOpenChange={setOpen} onDone={onSubmitted} />
       </CardContent>
     </Card>
-  );
-}
-
-function KycDialog({ open, onOpenChange, onSubmitted }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmitted: () => void }) {
-  const { t } = useTranslation();
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [selfieFile, setSelfieFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submitKycFn = useServerFn(submitKyc);
-
-  async function upload() {
-    if (!idFile || !selfieFile) return;
-    setBusy(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user!.id;
-      const base = `${uid}/${Date.now()}`;
-      const idPath = `${base}/id.${idFile.name.split(".").pop() || "bin"}`;
-      const selfiePath = `${base}/selfie.${selfieFile.name.split(".").pop() || "bin"}`;
-      const [u1, u2] = await Promise.all([
-        supabase.storage.from("kyc-documents").upload(idPath, idFile, { upsert: true }),
-        supabase.storage.from("kyc-documents").upload(selfiePath, selfieFile, { upsert: true }),
-      ]);
-      if (u1.error) throw u1.error;
-      if (u2.error) throw u2.error;
-      await submitKycFn({ data: { idDocumentPath: idPath, selfiePath } });
-      toast.success("KYC submitted");
-      onSubmitted();
-      onOpenChange(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("kyc.title")}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{t("kyc.subtitle")}</p>
-          <div className="space-y-1.5">
-            <Label>{t("kyc.idDoc")}</Label>
-            <Input type="file" accept="image/*,application/pdf" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("kyc.selfie")}</Label>
-            <Input type="file" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] ?? null)} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t("onboarding.back")}</Button>
-          <Button onClick={upload} disabled={busy || !idFile || !selfieFile}>{busy ? t("kyc.uploading") : t("kyc.submit")}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
