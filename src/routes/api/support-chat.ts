@@ -32,12 +32,15 @@ export const Route = createFileRoute("/api/support-chat")({
           last?.parts?.map((p) => (p.type === "text" ? p.text : "")).join(" ") ?? "";
         const shouldEscalate = ESCALATION_RE.test(lastText);
 
+        const { getSupportContext } = await import("@/lib/support-context.server");
+        const liveContext = await getSupportContext();
+
         const gateway = createLovableAiGatewayProvider(key);
         const modelMessages = await convertToModelMessages(messages);
 
         const result = streamText({
           model: gateway("openai/gpt-5.5"),
-          system: SYSTEM_PROMPT,
+          system: `${SYSTEM_PROMPT}\n\n${liveContext}`,
           messages: modelMessages,
         });
 
