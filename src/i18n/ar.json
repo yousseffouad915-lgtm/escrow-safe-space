@@ -93,7 +93,8 @@
     "youEarn": "ما ستستلمه (93%)",
     "signOut": "تسجيل الخروج",
     "signedInAs": "مسجل الدخول بصفة",
-    "welcomeBack": "أهلاً بعودتك"
+    "welcomeBack": "أهلاً بعودتك",
+    "postJob": "تقديم وظيفة"
   },
   "escrow": {
     "fundsSecured": "الأموال مؤمّنة",
@@ -146,7 +147,10 @@
     "pendingDeposits": "طلبات شحن المحفظة",
     "emptyDeposits": "لا توجد طلبات شحن حالياً.",
     "viewReceipt": "عرض الإيصال",
-    "adminWallet": "رسوم المنصة محفوظة في محفظة الأدمن"
+    "adminWallet": "رسوم المنصة محفوظة في محفظة الأدمن",
+    "withdrawals": "طلبات السحب",
+    "noWithdrawals": "لا توجد طلبات سحب معلقة.",
+    "markPaid": "تم الدفع"
   },
   "topup": {
     "button": "شحن المحفظة",
@@ -233,5 +237,39 @@
     "releaseToFreelancer": "الإفراج للمستقل",
     "refundClient": "استرداد للعميل",
     "manualOnly": "تتم مراجعة النزاعات يدوياً بواسطة الأدمن دائماً."
+  },
+  "wallet": {
+    "title": "محفظتي",
+    "open": "فتح المحفظة",
+    "back": "العودة للوحة التحكم",
+    "available": "الرصيد المتاح",
+    "locked": "محجوز في الضمان",
+    "topup": "شحن المحفظة",
+    "withdraw": "سحب النقود",
+    "ledger": "معاملاتي",
+    "in": "الداخل",
+    "out": "الخارج",
+    "noTx": "لا توجد معاملات بعد.",
+    "withdrawTitle": "سحب النقود",
+    "method": "وسيلة الاستلام",
+    "vodafone_cash": "فودافون كاش",
+    "instapay": "انستاباي",
+    "bank": "حساب بنكي",
+    "destination": "الوجهة (رقم / حساب / IBAN)",
+    "amount": "المبلغ (دولار)",
+    "submit": "طلب السحب",
+    "requested": "تم إرسال طلب السحب — بانتظار تحويل الإدارة.",
+    "history": "طلبات السحب",
+    "noWithdrawals": "لا توجد طلبات سحب.",
+    "pending": "قيد المراجعة",
+    "paid": "تم الدفع",
+    "rejected": "مرفوض",
+    "kind_deposit": "إيداع",
+    "kind_escrow_lock": "حجز في الضمان",
+    "kind_escrow_release": "تحرير الضمان",
+    "kind_escrow_refund": "استرداد الضمان",
+    "kind_platform_fee": "عمولة المنصة",
+    "kind_withdrawal": "سحب",
+    "kind_withdrawal_refund": "إرجاع مبلغ السحب"
   }
 }
