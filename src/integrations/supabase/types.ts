@@ -753,6 +753,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_review_withdrawal: {
+        Args: { _approve: boolean; _notes: string; _withdrawal_id: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          destination: string
+          id: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawal_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       approve_work: {
         Args: { _contract_id: string }
         Returns: {
@@ -865,6 +887,32 @@ export type Database = {
       request_revision: {
         Args: { _contract_id: string; _note: string }
         Returns: undefined
+      }
+      request_withdrawal: {
+        Args: {
+          _amount_cents: number
+          _destination: string
+          _method: Database["public"]["Enums"]["withdrawal_method"]
+        }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          destination: string
+          id: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawal_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       require_kyc_approved: { Args: { _user_id: string }; Returns: undefined }
       run_auto_releases: { Args: never; Returns: number }
