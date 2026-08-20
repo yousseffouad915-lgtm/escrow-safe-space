@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
+import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedFreelancerDashboardRouteImport } from './routes/_authenticated/freelancer-dashboard'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/client-dashboard'
@@ -36,6 +37,11 @@ const ApiSupportChatRoute = ApiSupportChatRouteImport.update({
   id: '/api/support-chat',
   path: '/api/support-chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFreelancerDashboardRoute =
   AuthenticatedFreelancerDashboardRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
+  '/wallet': typeof AuthenticatedWalletRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
+  '/wallet': typeof AuthenticatedWalletRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesById {
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/_authenticated/client-dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/freelancer-dashboard': typeof AuthenticatedFreelancerDashboardRoute
+  '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRouteTypes {
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/client-dashboard'
     | '/dashboard'
     | '/freelancer-dashboard'
+    | '/wallet'
     | '/api/support-chat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/client-dashboard'
     | '/dashboard'
     | '/freelancer-dashboard'
+    | '/wallet'
     | '/api/support-chat'
   id:
     | '__root__'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/_authenticated/client-dashboard'
     | '/_authenticated/dashboard'
     | '/_authenticated/freelancer-dashboard'
+    | '/_authenticated/wallet'
     | '/api/support-chat'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSupportChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/wallet': {
+      id: '/_authenticated/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AuthenticatedWalletRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/freelancer-dashboard': {
       id: '/_authenticated/freelancer-dashboard'
       path: '/freelancer-dashboard'
@@ -193,6 +212,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFreelancerDashboardRoute: typeof AuthenticatedFreelancerDashboardRoute
+  AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -200,6 +220,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFreelancerDashboardRoute: AuthenticatedFreelancerDashboardRoute,
+  AuthenticatedWalletRoute: AuthenticatedWalletRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -214,3 +235,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

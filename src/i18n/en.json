@@ -93,7 +93,8 @@
     "youEarn": "You receive (93%)",
     "signOut": "Sign out",
     "signedInAs": "Signed in as",
-    "welcomeBack": "Welcome back"
+    "welcomeBack": "Welcome back",
+    "postJob": "Post a job"
   },
   "escrow": {
     "fundsSecured": "Funds Secured",
@@ -146,7 +147,10 @@
     "pendingDeposits": "Pending wallet top-ups",
     "emptyDeposits": "No pending top-up requests.",
     "viewReceipt": "View receipt",
-    "adminWallet": "Platform fees held in admin wallet"
+    "adminWallet": "Platform fees held in admin wallet",
+    "withdrawals": "Withdrawal requests",
+    "noWithdrawals": "No pending withdrawals.",
+    "markPaid": "Mark paid"
   },
   "topup": {
     "button": "Top up wallet",
@@ -233,5 +237,39 @@
     "releaseToFreelancer": "Release to freelancer",
     "refundClient": "Refund client",
     "manualOnly": "Disputes are always reviewed manually by an admin."
+  },
+  "wallet": {
+    "title": "My wallet",
+    "open": "Open wallet",
+    "back": "Back to dashboard",
+    "available": "Available balance",
+    "locked": "Locked in escrow",
+    "topup": "Top up wallet",
+    "withdraw": "Withdraw funds",
+    "ledger": "My transactions",
+    "in": "In",
+    "out": "Out",
+    "noTx": "No transactions yet.",
+    "withdrawTitle": "Withdraw funds",
+    "method": "Payout method",
+    "vodafone_cash": "Vodafone Cash",
+    "instapay": "InstaPay",
+    "bank": "Bank account",
+    "destination": "Destination (number / handle / IBAN)",
+    "amount": "Amount (USD)",
+    "submit": "Request withdrawal",
+    "requested": "Withdrawal requested — pending admin payout.",
+    "history": "Withdrawal requests",
+    "noWithdrawals": "No withdrawal requests yet.",
+    "pending": "Pending",
+    "paid": "Paid",
+    "rejected": "Rejected",
+    "kind_deposit": "Deposit",
+    "kind_escrow_lock": "Escrow lock",
+    "kind_escrow_release": "Escrow release",
+    "kind_escrow_refund": "Escrow refund",
+    "kind_platform_fee": "Platform fee",
+    "kind_withdrawal": "Withdrawal",
+    "kind_withdrawal_refund": "Withdrawal returned"
   }
 }

@@ -585,6 +585,48 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_requests: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          destination: string
+          id: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          destination: string
+          id?: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          destination?: string
+          id?: string
+          method?: Database["public"]["Enums"]["withdrawal_method"]
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -711,6 +753,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_review_withdrawal: {
+        Args: { _approve: boolean; _notes: string; _withdrawal_id: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          destination: string
+          id: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawal_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       approve_work: {
         Args: { _contract_id: string }
         Returns: {
@@ -824,6 +888,32 @@ export type Database = {
         Args: { _contract_id: string; _note: string }
         Returns: undefined
       }
+      request_withdrawal: {
+        Args: {
+          _amount_cents: number
+          _destination: string
+          _method: Database["public"]["Enums"]["withdrawal_method"]
+        }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          destination: string
+          id: string
+          method: Database["public"]["Enums"]["withdrawal_method"]
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawal_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       require_kyc_approved: { Args: { _user_id: string }; Returns: undefined }
       run_auto_releases: { Args: never; Returns: number }
       submit_kyc_auto: {
@@ -903,6 +993,8 @@ export type Database = {
         | "escrow_release"
         | "escrow_refund"
         | "platform_fee"
+        | "withdrawal"
+        | "withdrawal_refund"
       notification_type:
         | "new_proposal"
         | "escrow_deposit_confirmed"
@@ -915,8 +1007,11 @@ export type Database = {
         | "new_review"
         | "deposit_reviewed"
         | "work_delivered"
+        | "withdrawal_reviewed"
       project_status: "open" | "awarded" | "closed" | "cancelled"
       proposal_status: "submitted" | "accepted" | "rejected" | "withdrawn"
+      withdrawal_method: "vodafone_cash" | "instapay" | "bank"
+      withdrawal_status: "pending" | "paid" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1064,6 +1159,8 @@ export const Constants = {
         "escrow_release",
         "escrow_refund",
         "platform_fee",
+        "withdrawal",
+        "withdrawal_refund",
       ],
       notification_type: [
         "new_proposal",
@@ -1077,9 +1174,12 @@ export const Constants = {
         "new_review",
         "deposit_reviewed",
         "work_delivered",
+        "withdrawal_reviewed",
       ],
       project_status: ["open", "awarded", "closed", "cancelled"],
       proposal_status: ["submitted", "accepted", "rejected", "withdrawn"],
+      withdrawal_method: ["vodafone_cash", "instapay", "bank"],
+      withdrawal_status: ["pending", "paid", "rejected"],
     },
   },
 } as const

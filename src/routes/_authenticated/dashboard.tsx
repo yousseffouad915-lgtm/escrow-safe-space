@@ -419,6 +419,9 @@ function WalletCard({ wallet }: { wallet: { available_cents: number; locked_cent
           <span className="text-muted-foreground">{t("dashboard.locked")}</span>
           <span className="font-semibold">{fmt(wallet?.locked_cents)}</span>
         </div>
+        <Button asChild size="sm" variant="outline" className="mt-2 w-full">
+          <Link to="/wallet">{t("wallet.open")}</Link>
+        </Button>
       </CardContent>
     </Card>
   );
@@ -1180,7 +1183,7 @@ function AdminPanel() {
 type DepositMethod = "vodafone_cash" | "instapay" | "reference" | "card";
 type DepositRow = { id: string; method: DepositMethod; amount_cents: number; status: string; reference: string | null; created_at: string; notes: string | null };
 
-function TopUpCard() {
+export function TopUpCard() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const listFn = useServerFn(listMyDeposits);
