@@ -1197,6 +1197,8 @@ function AdminPanel() {
       </Card>
 
       <DepositsQueue />
+
+      <WithdrawalsQueue />
     </div>
   );
 }
