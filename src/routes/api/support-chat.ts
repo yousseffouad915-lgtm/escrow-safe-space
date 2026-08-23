@@ -16,7 +16,7 @@ Keep responses friendly and professional. If asked something outside TrustLance,
 export const Route = createFileRoute("/api/support-chat")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: async ({ request }: { request: Request }) => {
         const body = (await request.json()) as { messages?: UIMessage[] };
         const messages = body.messages ?? [];
         if (!Array.isArray(messages) || messages.length === 0) {
