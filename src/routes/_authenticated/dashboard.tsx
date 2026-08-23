@@ -1407,3 +1407,59 @@ function DepositsQueue() {
     </Card>
   );
 }
+
+// ============ Admin: withdrawals queue ============
+function WithdrawalsQueue() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListPendingWithdrawals);
+  const reviewFn = useServerFn(adminReviewWithdrawal);
+  const q = useQuery({ queryKey: ["adminWithdrawals"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as Array<{
+    id: string; user_id: string; amount_cents: number; method: string;
+    destination: string; created_at: string;
+  }>;
+
+  const mut = useMutation({
+    mutationFn: (v: { withdrawalId: string; approve: boolean; notes?: string }) => reviewFn({ data: v }),
+    onSuccess: () => {
+      toast.success(t("admin.withdrawalReviewed"));
+      qc.invalidateQueries({ queryKey: ["adminWithdrawals"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm">{t("admin.pendingWithdrawals")}</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyWithdrawals")}</p>}
+        {rows.map((w) => (
+          <div key={w.id} className="rounded-md border p-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">{fmt(w.amount_cents)} · {t(`wallet.${w.method}`, w.method)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {w.destination} · user {w.user_id.slice(0, 8)} · {new Date(w.created_at).toLocaleString()}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={mut.isPending} onClick={() => mut.mutate({ withdrawalId: w.id, approve: true })}>
+                  {t("admin.markPaid")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={mut.isPending}
+                  onClick={() => mut.mutate({ withdrawalId: w.id, approve: false, notes: "Rejected by admin" })}
+                >
+                  {t("admin.reject")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
