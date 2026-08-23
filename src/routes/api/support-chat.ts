@@ -52,4 +52,4 @@ export const Route = createFileRoute("/api/support-chat")({
       },
     },
   },
-});
+} as Parameters<ReturnType<typeof createFileRoute<"/api/support-chat">>>[0]);
