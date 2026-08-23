@@ -14,6 +14,7 @@ Keep responses friendly and professional. If asked something outside TrustLance,
 
 
 export const Route = createFileRoute("/api/support-chat")({
+  // `server.handlers` is supported at runtime but missing from this version's route option types.
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
