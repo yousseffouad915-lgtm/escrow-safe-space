@@ -61,6 +61,8 @@ import {
   adminReviewDeposit,
   getReceiptUrl,
   submitDelivery,
+  adminListPendingWithdrawals,
+  adminReviewWithdrawal,
 } from "@/lib/trustlaunch.functions";
 
 // -------- Role-based dispatcher route --------
