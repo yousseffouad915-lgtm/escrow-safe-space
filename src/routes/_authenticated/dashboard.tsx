@@ -61,6 +61,8 @@ import {
   adminReviewDeposit,
   getReceiptUrl,
   submitDelivery,
+  adminListPendingWithdrawals,
+  adminReviewWithdrawal,
 } from "@/lib/trustlaunch.functions";
 
 // -------- Role-based dispatcher route --------
@@ -500,41 +502,21 @@ type Project = { id: string; title: string; description: string; budget_cents: n
 
 function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const listFn = useServerFn(listMyProjects);
-  const createFn = useServerFn(createProject);
   const projectsQ = useQuery({ queryKey: ["myProjects"], queryFn: () => listFn() });
-
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [budget, setBudget] = useState("");
-
-  const createMut = useMutation({
-    mutationFn: async () => {
-      const cents = Math.round(parseFloat(budget) * 100);
-      return createFn({ data: { title, description: desc, budgetCents: cents } });
-    },
-    onSuccess: () => {
-      toast.success("Project posted");
-      setTitle(""); setDesc(""); setBudget("");
-      qc.invalidateQueries({ queryKey: ["myProjects"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [postOpen, setPostOpen] = useState(false);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
-        <CardHeader><CardTitle className="text-sm">{t("dashboard.createProject")}</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5"><Label>{t("dashboard.projectTitle")}</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>{t("dashboard.projectDescription")}</Label><Textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>{t("dashboard.budget")}</Label><Input type="number" min="1" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !title || desc.length < 10 || !budget}>
-            {t("dashboard.post")}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="lg:col-span-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">{t("dashboard.myProjects")}</h2>
+        <Button size="sm" onClick={() => setPostOpen(true)}>
+          <Plus className="me-1 h-4 w-4" />
+          {t("dashboard.postJob")}
+        </Button>
+      </div>
+
+      <PostJobDialog open={postOpen} onOpenChange={setPostOpen} />
 
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("dashboard.myProjects")}</CardTitle></CardHeader>
@@ -554,6 +536,46 @@ function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
         <ContractsPanel role="client" kycApproved={kycApproved} />
       </div>
     </div>
+  );
+}
+
+function PostJobDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const createFn = useServerFn(createProject);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [budget, setBudget] = useState("");
+
+  const createMut = useMutation({
+    mutationFn: async () =>
+      createFn({ data: { title, description: desc, budgetCents: Math.round(parseFloat(budget) * 100) } }),
+    onSuccess: () => {
+      toast.success(t("dashboard.postJob"));
+      setTitle(""); setDesc(""); setBudget("");
+      qc.invalidateQueries({ queryKey: ["myProjects"] });
+      onOpenChange(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!createMut.isPending ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t("dashboard.createProject")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label>{t("dashboard.projectTitle")}</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{t("dashboard.projectDescription")}</Label><Textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{t("dashboard.budget")}</Label><Input type="number" min="1" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createMut.isPending}>{t("onboarding.back")}</Button>
+          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !title || desc.length < 10 || !budget}>
+            {t("dashboard.post")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1175,6 +1197,8 @@ function AdminPanel() {
       </Card>
 
       <DepositsQueue />
+
+      <WithdrawalsQueue />
     </div>
   );
 }
@@ -1375,6 +1399,62 @@ function DepositsQueue() {
                 )}
                 <Button size="sm" onClick={() => mut.mutate({ depositId: d.id, approve: true })}>Approve</Button>
                 <Button size="sm" variant="destructive" onClick={() => mut.mutate({ depositId: d.id, approve: false, notes: "Rejected by admin" })}>Reject</Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============ Admin: withdrawals queue ============
+function WithdrawalsQueue() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListPendingWithdrawals);
+  const reviewFn = useServerFn(adminReviewWithdrawal);
+  const q = useQuery({ queryKey: ["adminWithdrawals"], queryFn: () => listFn() });
+  const rows = (q.data ?? []) as Array<{
+    id: string; user_id: string; amount_cents: number; method: string;
+    destination: string; created_at: string;
+  }>;
+
+  const mut = useMutation({
+    mutationFn: (v: { withdrawalId: string; approve: boolean; notes?: string }) => reviewFn({ data: v }),
+    onSuccess: () => {
+      toast.success(t("admin.withdrawalReviewed"));
+      qc.invalidateQueries({ queryKey: ["adminWithdrawals"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm">{t("admin.pendingWithdrawals")}</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground">{t("admin.emptyWithdrawals")}</p>}
+        {rows.map((w) => (
+          <div key={w.id} className="rounded-md border p-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">{fmt(w.amount_cents)} · {t(`wallet.${w.method}`, w.method)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {w.destination} · user {w.user_id.slice(0, 8)} · {new Date(w.created_at).toLocaleString()}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={mut.isPending} onClick={() => mut.mutate({ withdrawalId: w.id, approve: true })}>
+                  {t("admin.markPaid")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={mut.isPending}
+                  onClick={() => mut.mutate({ withdrawalId: w.id, approve: false, notes: "Rejected by admin" })}
+                >
+                  {t("admin.reject")}
+                </Button>
               </div>
             </div>
           </div>

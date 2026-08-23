@@ -150,7 +150,11 @@
     "adminWallet": "رسوم المنصة محفوظة في محفظة الأدمن",
     "withdrawals": "طلبات السحب",
     "noWithdrawals": "لا توجد طلبات سحب معلقة.",
-    "markPaid": "تم الدفع"
+    "markPaid": "تم الدفع",
+    "pendingWithdrawals": "طلبات سحب معلقة",
+    "emptyWithdrawals": "لا توجد طلبات سحب حالياً.",
+    "reject": "رفض",
+    "withdrawalReviewed": "تمت مراجعة طلب السحب"
   },
   "topup": {
     "button": "شحن المحفظة",

@@ -150,7 +150,11 @@
     "adminWallet": "Platform fees held in admin wallet",
     "withdrawals": "Withdrawal requests",
     "noWithdrawals": "No pending withdrawals.",
-    "markPaid": "Mark paid"
+    "markPaid": "Mark as paid",
+    "pendingWithdrawals": "Pending withdrawal requests",
+    "emptyWithdrawals": "No pending withdrawals.",
+    "reject": "Reject",
+    "withdrawalReviewed": "Withdrawal reviewed"
   },
   "topup": {
     "button": "Top up wallet",
