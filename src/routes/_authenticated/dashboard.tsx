@@ -539,6 +539,46 @@ function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
   );
 }
 
+function PostJobDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const createFn = useServerFn(createProject);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [budget, setBudget] = useState("");
+
+  const createMut = useMutation({
+    mutationFn: async () =>
+      createFn({ data: { title, description: desc, budgetCents: Math.round(parseFloat(budget) * 100) } }),
+    onSuccess: () => {
+      toast.success(t("dashboard.postJob"));
+      setTitle(""); setDesc(""); setBudget("");
+      qc.invalidateQueries({ queryKey: ["myProjects"] });
+      onOpenChange(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!createMut.isPending ? onOpenChange(v) : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t("dashboard.createProject")}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label>{t("dashboard.projectTitle")}</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{t("dashboard.projectDescription")}</Label><Textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{t("dashboard.budget")}</Label><Input type="number" min="1" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createMut.isPending}>{t("onboarding.back")}</Button>
+          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !title || desc.length < 10 || !budget}>
+            {t("dashboard.post")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ProjectRow({ project }: { project: Project }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
