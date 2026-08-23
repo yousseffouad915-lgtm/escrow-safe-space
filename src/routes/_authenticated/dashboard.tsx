@@ -502,41 +502,21 @@ type Project = { id: string; title: string; description: string; budget_cents: n
 
 function ClientDashboard({ kycApproved }: { kycApproved: boolean }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const listFn = useServerFn(listMyProjects);
-  const createFn = useServerFn(createProject);
   const projectsQ = useQuery({ queryKey: ["myProjects"], queryFn: () => listFn() });
-
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [budget, setBudget] = useState("");
-
-  const createMut = useMutation({
-    mutationFn: async () => {
-      const cents = Math.round(parseFloat(budget) * 100);
-      return createFn({ data: { title, description: desc, budgetCents: cents } });
-    },
-    onSuccess: () => {
-      toast.success("Project posted");
-      setTitle(""); setDesc(""); setBudget("");
-      qc.invalidateQueries({ queryKey: ["myProjects"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [postOpen, setPostOpen] = useState(false);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
-        <CardHeader><CardTitle className="text-sm">{t("dashboard.createProject")}</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5"><Label>{t("dashboard.projectTitle")}</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>{t("dashboard.projectDescription")}</Label><Textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>{t("dashboard.budget")}</Label><Input type="number" min="1" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !title || desc.length < 10 || !budget}>
-            {t("dashboard.post")}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="lg:col-span-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">{t("dashboard.myProjects")}</h2>
+        <Button size="sm" onClick={() => setPostOpen(true)}>
+          <Plus className="me-1 h-4 w-4" />
+          {t("dashboard.postJob")}
+        </Button>
+      </div>
+
+      <PostJobDialog open={postOpen} onOpenChange={setPostOpen} />
 
       <Card>
         <CardHeader><CardTitle className="text-sm">{t("dashboard.myProjects")}</CardTitle></CardHeader>
