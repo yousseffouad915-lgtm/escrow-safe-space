@@ -304,12 +304,12 @@ export const markNotificationRead = createServerFn({ method: "POST" })
 export const getMyRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: roles }, { data: cfg }] = await Promise.all([
+    const [{ data: roles }, { data: isAdmin }] = await Promise.all([
       context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
-      context.supabase.from("admin_config").select("super_admin_id").eq("id", 1).maybeSingle(),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
     ]);
-    const list = (roles ?? []).map((r) => r.role);
-    if (cfg?.super_admin_id && cfg.super_admin_id === context.userId) list.push("admin");
+    const list: string[] = (roles ?? []).map((r) => r.role);
+    if (isAdmin === true) list.push("admin");
     return list;
   });
 
