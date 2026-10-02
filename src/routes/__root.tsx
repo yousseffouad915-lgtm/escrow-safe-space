@@ -38,7 +38,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void; info?: unknown }): React.JSX.Element {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -104,7 +104,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  errorComponent: ((props: { error: Error; reset: () => void }) => (
+    <ErrorComponent error={props.error} reset={props.reset} />
+  )) as never,
 });
 
 function RootShell({ children }: { children: ReactNode }) {

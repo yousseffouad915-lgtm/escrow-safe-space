@@ -43,9 +43,19 @@ export function SupportChatWidget() {
         parts: [{ type: "text", text: m.text }],
       }));
 
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        setMsgs([
+          ...nextMsgs,
+          { id: crypto.randomUUID(), role: "assistant", text: t("chat.signInRequired", "Please sign in to chat with support.") },
+        ]);
+        return;
+      }
       const res = await fetch("/api/support-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ messages: uiMessages }),
       });
       if (!res.ok || !res.body) throw new Error("Chat failed");
