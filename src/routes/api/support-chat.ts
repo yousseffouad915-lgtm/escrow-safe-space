@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { z } from "zod";
 
 // Scam / legitimacy triggers — EN + AR
 const ESCALATION_RE =
@@ -18,11 +19,43 @@ export const Route = createFileRoute("/api/support-chat")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
-        const body = (await request.json()) as { messages?: UIMessage[] };
-        const messages = body.messages ?? [];
-        if (!Array.isArray(messages) || messages.length === 0) {
-          return new Response("messages required", { status: 400 });
-        }
+        // Require a signed-in user
+        const auth = request.headers.get("authorization") ?? "";
+        const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+        if (!token) return new Response("Unauthorized", { status: 401 });
+        const { createClient } = await import("@supabase/supabase-js");
+        const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: userData, error: userErr } = await sb.auth.getUser(token);
+        if (userErr || !userData.user) return new Response("Unauthorized", { status: 401 });
+
+        // Validate input: only user/assistant text messages, server-owned roles
+        const schema = z.object({
+          messages: z
+            .array(
+              z.object({
+                role: z.enum(["user", "assistant"]),
+                parts: z
+                  .array(z.object({ type: z.string(), text: z.string().max(4000).optional() }))
+                  .max(20),
+              }),
+            )
+            .min(1)
+            .max(40),
+        });
+        const parsed = schema.safeParse(await request.json().catch(() => null));
+        if (!parsed.success) return new Response("messages required", { status: 400 });
+        const messages: UIMessage[] = parsed.data.messages.map((m, i) => ({
+          id: String(i),
+          role: m.role,
+          parts: [
+            {
+              type: "text" as const,
+              text: m.parts.map((p) => (p.type === "text" ? (p.text ?? "") : "")).join(" "),
+            },
+          ],
+        }));
 
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("AI not configured", { status: 500 });
